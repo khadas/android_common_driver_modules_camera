@@ -23,9 +23,11 @@
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-event.h>
 #include <media/videobuf2-dma-contig.h>
+#include <media/videobuf2-vmalloc.h>
 
 #include "aml_common.h"
 #include "aml_misc.h"
+#include "aml_isp.h"
 #include <linux/delay.h>
 
 static int video_verify_fmt(struct aml_video *video, struct v4l2_format *fmt)
@@ -377,7 +379,8 @@ static int video_buff_init(struct vb2_buffer *vb)
 	struct aml_buffer *buff = container_of(vbuf, struct aml_buffer, vb);
 	const struct v4l2_pix_format *pix = &video->f_current.fmt.pix;
 
-	buff->addr[AML_PLANE_A] = *((u32 *)vb2_plane_cookie(vb, 0));
+	if (video->id != AML_ISP_STREAM_PARAM)
+		buff->addr[AML_PLANE_A] = *((u32 *)vb2_plane_cookie(vb, 0));
 	buff->vaddr[AML_PLANE_A] = vb2_plane_vaddr(vb, 0);
 	buff->nplanes = video->afmt.nplanes;
 	buff->bsize = pix->width * pix->height * video->afmt.bpp / 8;
@@ -584,7 +587,10 @@ int aml_video_register(struct aml_video *video)
 
 	vb2_q = &video->vb2_q;
 	vb2_q->drv_priv = video;
-	vb2_q->mem_ops = &vb2_dma_contig_memops;
+	if (video->id == AML_ISP_STREAM_PARAM)
+		vb2_q->mem_ops = &vb2_vmalloc_memops;
+	else
+		vb2_q->mem_ops = &vb2_dma_contig_memops;
 	vb2_q->ops = &aml_vb2_ops;
 	vb2_q->type = video->type;
 	vb2_q->io_modes = VB2_DMABUF | VB2_MMAP | VB2_READ;

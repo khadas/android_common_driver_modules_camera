@@ -1551,6 +1551,43 @@ static void adap_hw_stop(void *a_dev)
 	pr_info("ADAP%u: hw stop\n", adap_dev->index);
 }
 
+static u32 *adap_fe_status(void *a_dev)
+{
+	struct adapter_dev_t *adap_dev = a_dev;
+	static u32 ADAP_debuginfo[8];
+	int module = FRONTEND_MD;
+
+	switch (adap_dev->index) {
+	case 0:
+		module = FRONTEND_MD;
+		break;
+	case 1:
+		module = FRONTEND1_MD;
+		break;
+	case 2:
+		module = FRONTEND2_MD;
+		break;
+	case 3:
+		module = FRONTEND3_MD;
+		break;
+	default:
+		break;
+	}
+
+	module_reg_read(a_dev, module, CSI2_ERR_STAT0, &ADAP_debuginfo[0]);
+	module_reg_read(a_dev, module, CSI2_PIC_SIZE_STAT, &ADAP_debuginfo[1]);
+	module_reg_read(a_dev, module, CSI2_DDR_WPTR_STAT_PIX, &ADAP_debuginfo[2]);
+
+	module_reg_read(a_dev, module, CSI2_X_START_END_ISP, &ADAP_debuginfo[3]);
+	module_reg_read(a_dev, module, CSI2_Y_START_END_ISP, &ADAP_debuginfo[4]);
+	module_reg_read(a_dev, module, CSI2_X_START_END_MEM, &ADAP_debuginfo[5]);
+	module_reg_read(a_dev, module, CSI2_Y_START_END_MEM, &ADAP_debuginfo[6]);
+
+	module_reg_read(a_dev, module, CSI2_INTERRUPT_CTRL_STAT, &ADAP_debuginfo[7]);
+
+	return ADAP_debuginfo;
+}
+
 const struct adapter_dev_ops adap_dev_hw_ops = {
 	.hw_init = adap_hw_init,
 	.hw_reset = adap_hw_reset,
@@ -1571,4 +1608,5 @@ const struct adapter_dev_ops adap_dev_hw_ops = {
 	.hw_irq_en = adap_hw_irq_enable,
 	.hw_irq_dis = adap_hw_irq_disable,
 	.hw_offline_mode = adap_hw_offline,
+	.hw_fe_status = adap_fe_status,
 };

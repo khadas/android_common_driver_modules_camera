@@ -26,6 +26,8 @@
 #include <linux/of_reserved_mem.h>
 #include <linux/of_irq.h>
 #include <linux/fs.h>
+#include <linux/seq_file.h>
+#include <linux/proc_fs.h>
 
 #include "aml_cam.h"
 
@@ -161,16 +163,16 @@ static int adap_alloc_raw_buffs(struct adapter_dev_t *a_dev)
 
 	switch (param->format) {
 	case ADAP_RAW10:
-		fsize = param->width * param->height * 10 / 8;
+		fsize = ((((param->width * 10 + 127 ) >> 7)  << 7 ) / 8) * param->height;
 	break;
 	case ADAP_RAW12:
-		fsize = param->width * param->height * 12 / 8;
+		fsize = ((((param->width * 12 + 127 ) >> 7)  << 7 ) / 8) * param->height;
 	break;
 	case ADAP_YUV422_8BIT:
-		fsize = param->width * param->height * 16 / 8;
+		fsize = ((((param->width * 16 + 127 ) >> 7)  << 7 ) / 8) * param->height;
 	break;
 	default:
-		fsize = param->width * param->height * 10 / 8;
+		fsize = ((((param->width * 10 + 127 ) >> 7)  << 7 ) / 8) * param->height;
 	break;
 	}
 
@@ -276,8 +278,8 @@ int adap_wdr_cfg_buf(struct adapter_dev_t *a_dev)
 int adap_fe_cfg_buf(struct adapter_dev_t *a_dev)
 {
 	unsigned long flags;
-	struct aml_video *video = &a_dev->video[0];
 	struct adapter_dev_param *param = &a_dev->param;
+	struct aml_video *video = &a_dev->video[0];
 
 	if (a_dev->wstatus != STATUS_START)
 		return -1;
@@ -724,6 +726,91 @@ static void adap_subdev_power_off(struct adapter_dev_t *adap_dev)
 	}
 }
 
+static int adapter_proc_show(struct seq_file *proc_entry, void *arg ) {
+
+	struct adapter_dev_t *adap_dev = proc_entry->private;
+
+	u32 *adap_info = adap_dev->ops->hw_fe_status(adap_dev);
+
+	seq_printf(
+		proc_entry, "\n******************* ADAPTER MODULE PARAM *******************\n");
+
+	seq_printf(proc_entry, " ------- PubAttr Info ------- \n");
+	seq_printf(proc_entry, "ImgWidth" "\t" "Imgheight" "\t" "WDRMode" "\n");
+
+	seq_printf(proc_entry, "%d \t\t %d \t\t %s \n\n",
+					adap_dev->param.width, adap_dev->param.height,
+					(adap_dev->enWDRMode == 0) ? "WDR_MODE_NONE" :
+					(adap_dev->enWDRMode == 1) ? "WDR_MODE_2To1_LINE" :
+					(adap_dev->enWDRMode == 2) ? "WDR_MODE_2To1_FRAME" :
+					(adap_dev->enWDRMode == 3) ? "SDR_DDR_MODE" :
+					(adap_dev->enWDRMode == 4) ? "ISP_SDR_DCAM_MODE" : "BUTT");
+
+	seq_printf(proc_entry, " ------- Frontend Status ------- \n");
+
+	seq_printf(proc_entry, "CIS2_ERR_STAT0" "\t" "CSI2_PIC_SIZE_STAT" "\t" "CSI2_DDR_WPTR_STAT_PIX" "\n");
+	seq_printf(proc_entry, "0x%x \t\t  0x%x \t\t\t  0x%x \n\n",
+					*adap_info, *(adap_info + 1), *(adap_info + 2) );
+
+	seq_printf(proc_entry, "CSI2_X_START_END_ISP" "\t" "CSI2_Y_START_END_ISP" "\t" "CSI2_X_START_END_MEM" "\t"
+					"CSI2_Y_START_END_MEM" "\n");
+	seq_printf(proc_entry, "0x%x \t\t  0x%x \t\t  0x%x \t\t  0x%x \n\n",
+					*(adap_info + 3), *(adap_info + 4), *(adap_info + 5), *(adap_info + 6) );
+
+	seq_printf(proc_entry, "CSI2_INTERRUPT_CTRL_STAT" "\n");
+	seq_printf(proc_entry, "0x%x \n\n", *(adap_info + 7) );
+
+	seq_printf(proc_entry, " ******************* PROC END ******************* \n\n");
+
+	return 0;
+}
+
+static int adapter_debug_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, adapter_proc_show, PDE_DATA(inode));
+}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+static const struct proc_ops adapter_proc_file_ops = {
+	/// kernel 5.15
+	.proc_open = adapter_debug_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+#else
+static const struct file_operations adapter_proc_file_ops = {
+	.open = adapter_debug_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+#endif
+
+static int adap_proc_init(struct adapter_dev_t *adap_dev)
+{
+	int rtn = -1;
+	char file_name[50] = {0};
+	struct aml_subdev *subdev = &adap_dev->subdev;
+
+	sprintf(file_name, "%s%d", "adapter", adap_dev->index);
+	subdev->proc_node_entry = proc_create_data(file_name, 0644, NULL, &adapter_proc_file_ops, adap_dev);
+	if (subdev->proc_node_entry == NULL) {
+		dev_err(adap_dev->dev, "adapter%u create proc failed!\n", adap_dev->index);
+		return rtn;
+	}
+
+	return 0;
+}
+
+static void adap_proc_exit(struct adapter_dev_t *adap_dev) {
+
+	char file_name[50] = {0};
+	sprintf(file_name, "%s%d", "adapter", adap_dev->index);
+
+	remove_proc_entry(file_name, NULL);
+}
+
 int aml_adap_subdev_register(struct adapter_dev_t *adap_dev)
 {
 	int rtn = -1;
@@ -749,6 +836,10 @@ int aml_adap_subdev_register(struct adapter_dev_t *adap_dev)
 	subdev->ops = &adap_subdev_ops;
 	subdev->priv = adap_dev;
 
+	rtn = adap_proc_init(adap_dev);
+	if (rtn)
+		goto error_rtn;
+
 	adap_subdev_ctrls_init(adap_dev);
 
 	rtn = aml_subdev_register(subdev);
@@ -763,6 +854,7 @@ error_rtn:
 
 void aml_adap_subdev_unregister(struct adapter_dev_t *adap_dev)
 {
+	adap_proc_exit(adap_dev);
 	aml_subdev_unregister(&adap_dev->subdev);
 }
 

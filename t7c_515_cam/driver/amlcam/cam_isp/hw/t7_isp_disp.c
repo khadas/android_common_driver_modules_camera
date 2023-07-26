@@ -156,28 +156,19 @@ static int disp_ceil(int size, int rate)
 {
 	int rst = 0;
 
-	if (size == 0)
-	{
+	if (size == 0) {
 		rst = 0;
-	}
-	else if ((size > 0) && (rate > 0))
-	{
+	} else if ((size > 0) && (rate > 0)) {
 		rst = size / rate;
-		if (rst * rate != size)
-		{
+		if (rst * rate != size) {
 			rst += 1;
 		}
-	}
-	else if ((size < 0) && (rate < 0))
-	{
+	} else if ((size < 0) && (rate < 0)) {
 		rst = (-size) / (-rate);
-		if (rst * rate != size)
-		{
+		if (rst * rate != size) {
 			rst += 1;
 		}
-	}
-	else
-	{
+	} else {
 		rst = size / rate;
 	}
 
@@ -216,8 +207,7 @@ static void disp_cfg_base_h_luma(struct isp_dev_t *isp_dev, u32 idx, void *lut)
 	val = SELECT_H_0123(val);
 	isp_reg_write(isp_dev, addr, val);
 
-	for (i = 0; i < 33; i++)
-	{
+	for (i = 0; i < 33; i++) {
 		if (0 < h_tap)
 			coef[0] = lut_cfg->pps_h_luma_coef[i * h_tap + 0];
 		else
@@ -250,8 +240,7 @@ static void disp_cfg_base_h_luma(struct isp_dev_t *isp_dev, u32 idx, void *lut)
 	val = isp_reg_read(isp_dev, addr);
 	val = SELECT_H_4567(val);
 	isp_reg_write(isp_dev, addr, val);
-	for (i = 0; i < 33; i++)
-	{
+	for (i = 0; i < 33; i++) {
 		if (4 < h_tap)
 			coef[0] = lut_cfg->pps_h_luma_coef[i * h_tap + 4];
 		else
@@ -301,8 +290,7 @@ static void disp_cfg_base_v_luma(struct isp_dev_t *isp_dev, u32 idx, void *lut)
 	val = isp_reg_read(isp_dev, addr);
 	val = SELECT_V_0123(val);
 	isp_reg_write(isp_dev, addr, val);
-	for (i = 0; i < 33; i++)
-	{
+	for (i = 0; i < 33; i++) {
 		if (0 < v_tap)
 			coef[0] = lut_cfg->pps_v_luma_coef[i * v_tap + 0];
 		else
@@ -335,8 +323,7 @@ static void disp_cfg_base_v_luma(struct isp_dev_t *isp_dev, u32 idx, void *lut)
 	val = isp_reg_read(isp_dev, addr);
 	val = SELECT_V_4567(val);
 	isp_reg_write(isp_dev, addr, val);
-	for (i = 0; i < 33; i++)
-	{
+	for (i = 0; i < 33; i++) {
 		if (4 < v_tap)
 			coef[0] = lut_cfg->pps_v_luma_coef[i * v_tap + 4];
 		else
@@ -386,8 +373,7 @@ static void disp_cfg_base_h_chroma(struct isp_dev_t *isp_dev, u32 idx, void *lut
 	val = isp_reg_read(isp_dev, addr);
 	val = SELECT_H_0123(val);
 	isp_reg_write(isp_dev, addr, val);
-	for (i = 0; i < 33; i++)
-	{
+	for (i = 0; i < 33; i++) {
 		if (0 < h_tap)
 			coef[0] = lut_cfg->pps_h_chroma_coef[i * h_tap + 0];
 		else
@@ -420,8 +406,7 @@ static void disp_cfg_base_h_chroma(struct isp_dev_t *isp_dev, u32 idx, void *lut
 	val = isp_reg_read(isp_dev, addr);
 	val = SELECT_H_4567(val);
 	isp_reg_write(isp_dev, addr, val);
-	for (i = 0; i < 33; i++)
-	{
+	for (i = 0; i < 33; i++) {
 		if (4 < h_tap)
 			coef[0] = lut_cfg->pps_h_chroma_coef[i * h_tap + 4];
 		else
@@ -471,8 +456,7 @@ static void disp_cfg_base_v_chroma(struct isp_dev_t *isp_dev, u32 idx, void *lut
 	val = isp_reg_read(isp_dev, addr);
 	val = SELECT_V_0123(val);
 	isp_reg_write(isp_dev, addr, val);
-	for (i = 0; i < 33; i++)
-	{
+	for (i = 0; i < 33; i++) {
 		if (0 < v_tap)
 			coef[0] = lut_cfg->pps_v_chroma_coef[i * v_tap + 0];
 		else
@@ -505,8 +489,7 @@ static void disp_cfg_base_v_chroma(struct isp_dev_t *isp_dev, u32 idx, void *lut
 	val = isp_reg_read(isp_dev, addr);
 	val = SELECT_V_4567(val);
 	isp_reg_write(isp_dev, addr, val);
-	for (i = 0; i < 33; i++)
-	{
+	for (i = 0; i < 33; i++) {
 		if (4 < v_tap)
 			coef[0] = lut_cfg->pps_v_chroma_coef[i * v_tap + 4];
 		else
@@ -554,8 +537,7 @@ void isp_disp_set_crop_size(struct isp_dev_t *isp_dev, u32 idx, struct aml_crop 
 	u32 val = 0;
 	u32 addr = 0;
 
-	if (idx >= DISP_CNT)
-	{
+	if (idx >= DISP_CNT) {
 		pr_err("Error input disp index\n");
 		return;
 	}
@@ -593,8 +575,7 @@ void isp_disp_set_scaler_out_size(struct isp_dev_t *isp_dev, u32 idx, struct aml
 	u32 val = 0;
 	u32 addr = 0;
 
-	if (idx >= DISP_CNT)
-	{
+	if (idx >= DISP_CNT) {
 		pr_err("Error input disp index\n");
 		return;
 	}
@@ -616,8 +597,8 @@ void isp_disp_set_csc2_fmt(struct isp_dev_t *isp_dev, u32 idx, struct aml_format
 
 	isp_reg_update_bits(isp_dev, DISP0_TOP_TOP_CTRL + (idx * 0x100), 0, 1, 1);
 
-	if (fmt->code != V4L2_PIX_FMT_RGB24)
-	{
+	if (!(fmt->code == V4L2_PIX_FMT_RGB24 ||
+		fmt->code == V4L2_PIX_FMT_BGR24)) {
 		pr_debug("Error to support disp%u csc2\n", idx);
 		return;
 	}
@@ -713,8 +694,7 @@ void isp_disp_set_input_size(struct isp_dev_t *isp_dev, u32 idx, struct aml_form
 	u32 val = 0;
 	u32 addr = 0;
 
-	if (idx >= DISP_CNT)
-	{
+	if (idx >= DISP_CNT) {
 		pr_err("Error input disp index\n");
 		return;
 	}
@@ -766,8 +746,7 @@ void isp_disp_pps_config(struct isp_dev_t *isp_dev, u32 idx,
 	prev_en = (ivsize > 4 * ovsize) ? 1 : 0;
 
 	pps_en = hsc_en | vsc_en | preh_en | prev_en;
-	if (!pps_en)
-	{
+	if (!pps_en) {
 		pr_info("ISP%u: No need to enable idx %u pps\n", isp_dev->index, idx);
 		return;
 	}
@@ -839,21 +818,15 @@ void isp_disp_pps_config(struct isp_dev_t *isp_dev, u32 idx,
 	step_h_integer = thsize / ohsize;
 	step_v_integer = tvsize / ovsize;
 
-	if (thsize > 2048)
-	{
+	if (thsize > 2048) {
 		step_h_frac_div = (((thsize << 18) / ohsize) << 2) - (step_h_integer << 20);
-	}
-	else
-	{
+	} else {
 		step_h_frac_div = (thsize << 20) / ohsize - (step_h_integer << 20);
 	}
 
-	if (tvsize > 2048)
-	{
+	if (tvsize > 2048) {
 		step_v_frac_div = (((tvsize << 18) / ovsize) << 2) - (step_v_integer << 20);
-	}
-	else
-	{
+	} else {
 		step_v_frac_div = (tvsize << 20) / ovsize - (step_v_integer << 20);
 	}
 
@@ -886,15 +859,13 @@ void isp_disp_pps_config(struct isp_dev_t *isp_dev, u32 idx,
 	val = (0 << 28) | (step_h_integer << 24) | (step_h_fraction & 0xffffff);
 	isp_reg_write(isp_dev, addr, val);
 
-	if (reg_vsc_tap_num_alt == 2)
-	{
+	if (reg_vsc_tap_num_alt == 2) {
 		addr = ISP_SCALE0_COEF_IDX_LUMA + ((idx * 0x100) << 2);
 		val = (0 << 10) | (1 << 9) | (1 << 8) | (0 << 7) | (0 << 0);
 		isp_reg_write(isp_dev, addr, val);
 
 		addr = ISP_SCALE0_COEF_LUMA + ((idx * 0x100) << 2);
-		for (i = 0; i < 33; i++)
-		{
+		for (i = 0; i < 33; i++) {
 			val = ((pps_lut_tap2[i][0] << 16) & 0x7ff0000) | ((pps_lut_tap2[i][1] & 0x7ff) << 0);
 			isp_reg_write(isp_dev, addr, val);
 			isp_reg_write(isp_dev, addr, 0);
@@ -905,23 +876,20 @@ void isp_disp_pps_config(struct isp_dev_t *isp_dev, u32 idx,
 		isp_reg_write(isp_dev, addr, val);
 
 		addr = ISP_SCALE0_COEF_CHRO + ((idx * 0x100) << 2);
-		for (i = 0; i < 33; i++)
-		{
+		for (i = 0; i < 33; i++) {
 			val = ((pps_lut_tap2[i][0] << 16) & 0x7ff0000) | ((pps_lut_tap2[i][1] & 0x7ff) << 0);
 			isp_reg_write(isp_dev, addr, val);
 			isp_reg_write(isp_dev, addr, 0);
 		}
-	}
-	else if (reg_vsc_tap_num_alt == 4)
-	{
+
+	} else if ( reg_vsc_tap_num_alt == 4) {
 
 		addr = ISP_SCALE0_COEF_IDX_LUMA + ((idx * 0x100) << 2);
 		val = (0 << 10) | (1 << 9) | (0 << 8) | (0 << 7) | (0 << 0);
 		isp_reg_write(isp_dev, addr, val);
 
 		addr = ISP_SCALE0_COEF_LUMA + ((idx * 0x100) << 2);
-		for (i = 0; i < 33; i++)
-		{
+		for (i = 0; i < 33; i++) {
 			val = ((pps_lut_tap4[i][0] << 16) & 0x7ff0000) | ((pps_lut_tap4[i][1] & 0x7ff) << 0);
 			isp_reg_write(isp_dev, addr, val);
 
@@ -934,25 +902,22 @@ void isp_disp_pps_config(struct isp_dev_t *isp_dev, u32 idx,
 		isp_reg_write(isp_dev, addr, val);
 
 		addr = ISP_SCALE0_COEF_CHRO + ((idx * 0x100) << 2);
-		for (i = 0; i < 33; i++)
-		{
+		for (i = 0; i < 33; i++) {
 			val = ((pps_lut_tap4[i][0] << 16) & 0x7ff0000) | ((pps_lut_tap4[i][1] & 0x7ff) << 0);
 			isp_reg_write(isp_dev, addr, val);
 
 			val = ((pps_lut_tap4[i][2] << 16) & 0x7ff0000) | ((pps_lut_tap4[i][3] & 0x7ff) << 0);
 			isp_reg_write(isp_dev, addr, val);
+
 		}
-	}
-	else
-	{
+	} else {
 
 		addr = ISP_SCALE0_COEF_IDX_LUMA + ((idx * 0x100) << 2);
 		val = (0 << 10) | (1 << 9) | (0 << 8) | (0 << 7) | (0 << 0);
 		isp_reg_write(isp_dev, addr, val);
 
 		addr = ISP_SCALE0_COEF_LUMA + ((idx * 0x100) << 2);
-		for (i = 0; i < 33; i++)
-		{
+		for (i = 0; i < 33; i++) {
 			val = ((pps_lut_tap8[i][0] << 16) & 0x7ff0000) | ((pps_lut_tap8[i][1] & 0x7ff) << 0);
 			isp_reg_write(isp_dev, addr, val);
 
@@ -965,8 +930,7 @@ void isp_disp_pps_config(struct isp_dev_t *isp_dev, u32 idx,
 		isp_reg_write(isp_dev, addr, val);
 
 		addr = ISP_SCALE0_COEF_LUMA + ((idx * 0x100) << 2);
-		for (i = 0; i < 33; i++)
-		{
+		for (i = 0; i < 33; i++) {
 			val = ((pps_lut_tap8[i][4] << 16) & 0x7ff0000) | ((pps_lut_tap8[i][5] & 0x7ff) << 0);
 			isp_reg_write(isp_dev, addr, val);
 
@@ -979,8 +943,7 @@ void isp_disp_pps_config(struct isp_dev_t *isp_dev, u32 idx,
 		isp_reg_write(isp_dev, addr, val);
 
 		addr = ISP_SCALE0_COEF_CHRO + ((idx * 0x100) << 2);
-		for (i = 0; i < 33; i++)
-		{
+		for (i = 0; i < 33; i++) {
 			val = ((pps_lut_tap8[i][0] << 16) & 0x7ff0000) | ((pps_lut_tap8[i][1] & 0x7ff) << 0);
 			isp_reg_write(isp_dev, addr, val);
 
@@ -993,8 +956,7 @@ void isp_disp_pps_config(struct isp_dev_t *isp_dev, u32 idx,
 		isp_reg_write(isp_dev, addr, val);
 
 		addr = ISP_SCALE0_COEF_CHRO + ((idx * 0x100) << 2);
-		for (i = 0; i < 33; i++)
-		{
+		for (i = 0; i < 33; i++) {
 			val = ((pps_lut_tap8[i][4] << 16) & 0x7ff0000) | ((pps_lut_tap8[i][5] & 0x7ff) << 0);
 			isp_reg_write(isp_dev, addr, val);
 
@@ -1003,16 +965,14 @@ void isp_disp_pps_config(struct isp_dev_t *isp_dev, u32 idx,
 		}
 	}
 
-	if (reg_hsc_tap_num == 2)
-	{
+	if (reg_hsc_tap_num == 2) {
 
 		addr = ISP_SCALE0_COEF_IDX_LUMA + ((idx * 0x100) << 2);
 		val = (2 << 10) | (1 << 9) | (1 << 8) | (0 << 7) | (0 << 0);
 		isp_reg_write(isp_dev, addr, val);
 
 		addr = ISP_SCALE0_COEF_LUMA + ((idx * 0x100) << 2);
-		for (i = 0; i < 33; i++)
-		{
+		for (i = 0; i < 33; i++) {
 			val = ((pps_lut_tap2[i][0] << 16) & 0x7ff0000) | ((pps_lut_tap2[i][1] & 0x7ff) << 0);
 			isp_reg_write(isp_dev, addr, val);
 			isp_reg_write(isp_dev, addr, 0);
@@ -1023,23 +983,19 @@ void isp_disp_pps_config(struct isp_dev_t *isp_dev, u32 idx,
 		isp_reg_write(isp_dev, addr, val);
 
 		addr = ISP_SCALE0_COEF_CHRO + ((idx * 0x100) << 2);
-		for (i = 0; i < 33; i++)
-		{
+		for (i = 0; i < 33; i++) {
 			val = ((pps_lut_tap2[i][0] << 16) & 0x7ff0000) | ((pps_lut_tap2[i][1] & 0x7ff) << 0);
 			isp_reg_write(isp_dev, addr, val);
 			isp_reg_write(isp_dev, addr, 0);
 		}
-	}
-	else if (reg_hsc_tap_num == 4)
-	{
+	} else if (reg_hsc_tap_num == 4) {
 
 		addr = ISP_SCALE0_COEF_IDX_LUMA + ((idx * 0x100) << 2);
 		val = (2 << 10) | (1 << 9) | (0 << 8) | (0 << 7) | (0 << 0);
 		isp_reg_write(isp_dev, addr, val);
 
 		addr = ISP_SCALE0_COEF_LUMA + ((idx * 0x100) << 2);
-		for (i = 0; i < 33; i++)
-		{
+		for (i = 0; i < 33; i++) {
 			val = ((pps_lut_tap4[i][0] << 16) & 0x7ff0000) | ((pps_lut_tap4[i][1] & 0x7ff) << 0);
 			isp_reg_write(isp_dev, addr, val);
 
@@ -1052,25 +1008,22 @@ void isp_disp_pps_config(struct isp_dev_t *isp_dev, u32 idx,
 		isp_reg_write(isp_dev, addr, val);
 
 		addr = ISP_SCALE0_COEF_CHRO + ((idx * 0x100) << 2);
-		for (i = 0; i < 33; i++)
-		{
+		for (i = 0; i < 33; i++) {
 			val = ((pps_lut_tap4[i][0] << 16) & 0x7ff0000) | ((pps_lut_tap4[i][1] & 0x7ff) << 0);
 			isp_reg_write(isp_dev, addr, val);
 
 			val = ((pps_lut_tap4[i][2] << 16) & 0x7ff0000) | ((pps_lut_tap4[i][3] & 0x7ff) << 0);
 			isp_reg_write(isp_dev, addr, val);
 		}
-	}
-	else
-	{
+
+	} else {
 
 		addr = ISP_SCALE0_COEF_IDX_LUMA + ((idx * 0x100) << 2);
 		val = (2 << 10) | (1 << 9) | (0 << 8) | (0 << 7) | (0 << 0);
 		isp_reg_write(isp_dev, addr, val);
 
 		addr = ISP_SCALE0_COEF_LUMA + ((idx * 0x100) << 2);
-		for (i = 0; i < 33; i++)
-		{
+		for (i = 0; i < 33; i++) {
 			val = ((pps_lut_tap8[i][0] << 16) & 0x7ff0000) | ((pps_lut_tap8[i][1] & 0x7ff) << 0);
 			isp_reg_write(isp_dev, addr, val);
 
@@ -1083,8 +1036,7 @@ void isp_disp_pps_config(struct isp_dev_t *isp_dev, u32 idx,
 		isp_reg_write(isp_dev, addr, val);
 
 		addr = ISP_SCALE0_COEF_LUMA + ((idx * 0x100) << 2);
-		for (i = 0; i < 33; i++)
-		{
+		for (i = 0; i < 33; i++) {
 			val = ((pps_lut_tap8[i][4] << 16) & 0x7ff0000) | ((pps_lut_tap8[i][5] & 0x7ff) << 0);
 			isp_reg_write(isp_dev, addr, val);
 
@@ -1097,8 +1049,7 @@ void isp_disp_pps_config(struct isp_dev_t *isp_dev, u32 idx,
 		isp_reg_write(isp_dev, addr, val);
 
 		addr = ISP_SCALE0_COEF_CHRO + ((idx * 0x100) << 2);
-		for (i = 0; i < 33; i++)
-		{
+		for (i = 0; i < 33; i++) {
 			val = ((pps_lut_tap8[i][0] << 16) & 0x7ff0000) | ((pps_lut_tap8[i][1] & 0x7ff) << 0);
 			isp_reg_write(isp_dev, addr, val);
 
@@ -1111,8 +1062,7 @@ void isp_disp_pps_config(struct isp_dev_t *isp_dev, u32 idx,
 		isp_reg_write(isp_dev, addr, val);
 
 		addr = ISP_SCALE0_COEF_CHRO + ((idx * 0x100) << 2);
-		for (i = 0; i < 33; i++)
-		{
+		for (i = 0; i < 33; i++) {
 			val = ((pps_lut_tap8[i][4] << 16) & 0x7ff0000) | ((pps_lut_tap8[i][5] & 0x7ff) << 0);
 			isp_reg_write(isp_dev, addr, val);
 
@@ -1262,8 +1212,7 @@ void isp_disp_calc_slice(struct isp_dev_t *isp_dev, u32 idx, struct aml_slice *p
 	param->pright_hsize = right_hsize;
 	param->pright_ovlp = right_overlap;
 
-	if (reg_crop_en == 1)
-	{
+	if (reg_crop_en == 1) {
 		crop_hend = (reg_crop_hstart + reg_crop_hsize) > whole_frame_hcenter ? xsize : (reg_crop_hstart + reg_crop_hsize);
 		left_hsize = reg_crop_hstart > whole_frame_hcenter ? 0 : (crop_hend - reg_crop_hstart);
 		left_overlap = ((reg_crop_hstart > whole_frame_hcenter) || (crop_hend < whole_frame_hcenter)) ? 0 : reg_stch_ovlp_num;
@@ -1274,16 +1223,14 @@ void isp_disp_calc_slice(struct isp_dev_t *isp_dev, u32 idx, struct aml_slice *p
 		right_overlap = ((reg_crop_hstart > whole_frame_hcenter) || (crop_hend < whole_frame_hcenter)) ? 0 : reg_stch_ovlp_num;
 	}
 
-	if (reg_prehsc_en == 1)
-	{
+	if (reg_prehsc_en == 1) {
 		left_hsize = disp_ceil(left_hsize, hscale_rate);
 		left_overlap = disp_ceil(left_overlap, hscale_rate);
 		right_hsize = disp_ceil(right_hsize, hscale_rate);
 		right_overlap = disp_ceil(right_overlap, hscale_rate);
 	}
 
-	if (reg_hsc_en)
-	{
+	if (reg_hsc_en) {
 		tmp_left_hsize = left_hsize;
 		tmp_left_overlap = left_overlap;
 		tmp_right_hsize = right_hsize;
@@ -1302,8 +1249,7 @@ void isp_disp_calc_slice(struct isp_dev_t *isp_dev, u32 idx, struct aml_slice *p
 		phase_sum[0] = 0;
 		phase_sum[1] = 0;
 
-		for (i = 0; i < left_hsize; i++)
-		{
+		for (i = 0; i < left_hsize; i++) {
 			if (hinte[0] >= post_h_posi[0])
 				break;
 			phase_sum[0] = phase_acc[0] + phase_step[0];
@@ -1317,8 +1263,7 @@ void isp_disp_calc_slice(struct isp_dev_t *isp_dev, u32 idx, struct aml_slice *p
 		right_overlap = left_hsize - i - left_overlap;
 		right_hsize = left_hsize - left_overlap + right_overlap;
 
-		for (i = 0; i < left_hsize; i++)
-		{
+		for (i = 0; i < left_hsize; i++) {
 			if (hinte[1] >= post_h_posi[1])
 				break;
 			phase_sum[1] = phase_acc[1] + phase_step[1];
@@ -1367,8 +1312,7 @@ void isp_disp_cfg_slice(struct isp_dev_t *isp_dev, u32 idx, struct aml_slice *pa
 	int *right_hsc_ini_integer = param->right_hsc_ini_integer;
 	int *right_hsc_ini_phs0 = param->right_hsc_ini_phs0;
 
-	if (param->pos == 0)
-	{ // left half
+	if (param->pos == 0) { // left half
 		addr = DISP0_PPS_HSC_LUMA_PHASE_CTRL + ((idx * 0x100) << 2);
 		val = (reg_hsc_ini_integer[0] << 24) | (reg_hsc_ini_phs0[0] << 0);
 		isp_hwreg_write(isp_dev, addr, val);
@@ -1380,9 +1324,7 @@ void isp_disp_cfg_slice(struct isp_dev_t *isp_dev, u32 idx, struct aml_slice *pa
 		addr = DISP0_TOP_OUT_SIZE + ((idx * 0x100) << 2);
 		val = param->left_hsize;
 		isp_hwreg_update_bits(isp_dev, addr, val, 16, 16);
-	}
-	else if (param->pos == 1)
-	{ // right half
+	} else if (param->pos == 1) { // right half
 		addr = DISP0_PPS_HSC_LUMA_PHASE_CTRL + ((idx * 0x100) << 2);
 		val = (right_hsc_ini_integer[0] << 24) | (right_hsc_ini_phs0[0] << 0);
 		isp_hwreg_write(isp_dev, addr, val);
@@ -1402,8 +1344,7 @@ void isp_disp_cfg_param(struct isp_dev_t *isp_dev, u32 idx, struct aml_buffer *b
 	aisp_param_t *param = buff->vaddr[AML_PLANE_A];
 	return;
 
-	if (param->pvalid.aisp_base)
-	{
+	if (param->pvalid.aisp_base) {
 		disp_cfg_base_fxset(isp_dev, idx, &param->base_cfg);
 		disp_cfg_base_fxlut(isp_dev, idx, &param->base_cfg);
 	}
@@ -1415,8 +1356,7 @@ void isp_disp_init(struct isp_dev_t *isp_dev)
 #ifdef T7C_CHIP
 	isp_reg_update_bits(isp_dev, ISP_TOP_PATH_EN, 0x7, 4, 4);
 #endif
-	for (i = 0; i < 3; i++)
-	{
+	for (i = 0; i < 3; i++) {
 		isp_reg_update_bits(isp_dev, DISP0_TOP_TOP_CTRL + ((i * DISP_INTER) << 2), 0, 0, 7);
 
 		isp_reg_update_bits(isp_dev, DISP0_PPS_SCALE_EN + ((i * DISP_INTER) << 2), 4, 0, 4);

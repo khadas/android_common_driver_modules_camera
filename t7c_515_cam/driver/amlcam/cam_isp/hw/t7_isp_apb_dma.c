@@ -79,8 +79,8 @@ void isp_apb_dma_fill_rreg_buff(struct isp_dev_t *isp_dev)
 	u32 base_reg = (ISP_TOP_INPUT_SIZE - ISP_BASE) >> 2;
 	u32 max_reg = (ISP_LOSSD_MIX_RO_BIT_LEN_L_3 - ISP_BASE) >> 2;
 	struct isp_global_info *g_info = isp_global_get_info();
-	struct aml_reg *g_rreg = g_info->rreg_buff.vaddr[AML_PLANE_A];
-	struct aml_reg *rreg = isp_dev->rreg_buff.vaddr[AML_PLANE_A];
+	struct aml_reg *g_rreg = g_info->rreg_buff.vmaddr[AML_PLANE_A];
+	struct aml_reg *rreg = isp_dev->rreg_buff.vmaddr[AML_PLANE_A];
 
 	for (i = base_reg; i <= max_reg; i++) {
 		rreg[i].addr = i;
@@ -105,7 +105,7 @@ void isp_apb_dma_fill_gisp_rreg_buff(struct isp_global_info *g_isp)
 	u32 base_reg = (ISP_TOP_INPUT_SIZE - ISP_BASE) >> 2;
 	u32 max_reg = (ISP_LOSSD_MIX_RO_BIT_LEN_L_3 - ISP_BASE) >> 2;
 	struct isp_dev_t *isp_dev = g_isp->isp_dev;
-	struct aml_reg *rreg = g_isp->rreg_buff.vaddr[AML_PLANE_A];
+	struct aml_reg *rreg = g_isp->rreg_buff.vmaddr[AML_PLANE_A];
 
 	for (i = base_reg; i <= max_reg; i++) {
 		rreg[i].addr = i;

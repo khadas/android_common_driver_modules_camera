@@ -469,8 +469,8 @@ static const struct imx415_mode imx415_modes_4lanes[] = {
 		.height = 2160,
 		.hmax = 0x0898,
 		.link_freq_index = FREQ_INDEX_1080P,
-		.data = linear_4k_30fps_1440Mbps_4lane_10bits,
-		.data_size = ARRAY_SIZE(linear_4k_30fps_1440Mbps_4lane_10bits),
+		.data = imx415_1080p_settings,
+		.data_size = ARRAY_SIZE(imx415_1080p_settings),
 	},
 	{
 		.width = 3840,
@@ -1003,7 +1003,7 @@ int imx415_sbdev_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh) {
 
 int imx415_sbdev_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh) {
 	struct imx415 *imx415 = to_imx415(sd);
-	imx415_stop_streaming(imx415);
+	imx415_set_stream(sd, 0);
 	imx415_power_off(imx415);
 	return 0;
 }
@@ -1049,7 +1049,6 @@ static struct v4l2_ctrl_config wdr_cfg = {
 	.id = V4L2_CID_AML_MODE,
 	.name = "wdr mode",
 	.type = V4L2_CTRL_TYPE_INTEGER,
-	.flags = V4L2_CTRL_FLAG_EXECUTE_ON_WRITE,
 	.min = 0,
 	.max = 2,
 	.step = 1,
@@ -1152,11 +1151,14 @@ static int imx415_parse_endpoint(struct imx415 *imx415)
 	int rtn = 0;
 	s64 fq;
 	struct fwnode_handle *endpoint = NULL;
+	struct device_node *node = NULL;
 
-	endpoint = fwnode_graph_get_next_endpoint(dev_fwnode(imx415->dev), NULL);
-	if (!endpoint) {
-		dev_err(imx415->dev, "Endpoint node not found\n");
-		return -EINVAL;
+	//endpoint = fwnode_graph_get_next_endpoint(dev_fwnode(imx415->dev), NULL);
+	for_each_endpoint_of_node(imx415->dev->of_node, node) {
+		if (strstr(node->name, "imx415")) {
+			endpoint = of_fwnode_handle(node);
+			break;
+		}
 	}
 
 	rtn = v4l2_fwnode_endpoint_alloc_parse(endpoint, &imx415->ep);
@@ -1225,7 +1227,7 @@ static int imx415_register_subdev(struct imx415 *imx415)
 		goto err_return;
 	}
 
-	rtn = v4l2_async_register_subdev_sensor(&imx415->sd);
+	rtn = v4l2_async_register_subdev(&imx415->sd);
 	if (rtn < 0) {
 		dev_err(imx415->dev, "Could not register v4l2 device\n");
 		goto err_return;

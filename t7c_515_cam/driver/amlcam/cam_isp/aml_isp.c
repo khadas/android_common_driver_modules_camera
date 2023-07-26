@@ -26,6 +26,9 @@
 #include <linux/pm_domain.h>
 #include <linux/interrupt.h>
 #include <linux/irqreturn.h>
+#include <linux/seq_file.h>
+#include <linux/proc_fs.h>
+#include <linux/timex.h>
 
 #include "aml_isp.h"
 #include "aml_cam.h"
@@ -71,22 +74,25 @@ static int isp_subdrv_reg_buf_alloc(struct isp_dev_t *isp_dev)
 	u32 wsize, rsize;
 	u32 bsize = 0;
 	dma_addr_t paddr = 0x0000;
-	void *virtaddr = NULL;
+	void *virtaddr = NULL, *vmaddr = NULL;
 
 	wsize = 256 * 1024;
 	rsize = 128 * 1024;
 	bsize = wsize + rsize;
 
 	virtaddr = dma_alloc_coherent(isp_dev->dev, bsize, &paddr, GFP_KERNEL);
+	vmaddr = vmalloc(bsize);
 
 	isp_dev->wreg_buff.nplanes = 1;
 	isp_dev->wreg_buff.bsize = wsize;
 	isp_dev->wreg_buff.addr[AML_PLANE_A] = paddr;
 	isp_dev->wreg_buff.vaddr[AML_PLANE_A] = virtaddr;
+	isp_dev->wreg_buff.vmaddr[AML_PLANE_A] = vmaddr;
 
 	isp_dev->rreg_buff.nplanes = 1;
 	isp_dev->rreg_buff.addr[AML_PLANE_A] = paddr + wsize;
 	isp_dev->rreg_buff.vaddr[AML_PLANE_A] = virtaddr + wsize;
+	isp_dev->rreg_buff.vmaddr[AML_PLANE_A] = vmaddr + wsize;
 
 	pr_debug("reg alloc\n");
 
@@ -106,11 +112,17 @@ static int isp_subdrv_reg_buf_free(struct isp_dev_t *isp_dev)
 	if (vaddr)
 		dma_free_coherent(isp_dev->dev, bsize, vaddr, (dma_addr_t)paddr);
 
+	vaddr = isp_dev->wreg_buff.vmaddr[AML_PLANE_A];
+	if (vaddr)
+		vfree(vaddr);
+
 	isp_dev->wreg_buff.addr[AML_PLANE_A] = 0x0000;
 	isp_dev->wreg_buff.vaddr[AML_PLANE_A] = NULL;
+	isp_dev->wreg_buff.vmaddr[AML_PLANE_A] = NULL;
 
 	isp_dev->rreg_buff.addr[AML_PLANE_A] = 0x0000;
 	isp_dev->rreg_buff.vaddr[AML_PLANE_A] = NULL;
+	isp_dev->rreg_buff.vmaddr[AML_PLANE_A] = NULL;
 
 	pr_debug("reg free\n");
 
@@ -272,7 +284,8 @@ int isp_subdev_start_manual_dma(struct isp_dev_t *isp_dev)
 		(g_info->user > 1))
 		return 0;
 
-	dma_sync_single_for_device(isp_dev->dev,isp_dev->wreg_buff.addr[AML_PLANE_A], isp_dev->wreg_buff.bsize, DMA_TO_DEVICE);
+	memcpy(isp_dev->wreg_buff.vaddr[AML_PLANE_A], isp_dev->wreg_buff.vmaddr[AML_PLANE_A], isp_dev->wreg_buff.bsize);
+	dma_sync_single_for_device(isp_dev->dev, isp_dev->wreg_buff.addr[AML_PLANE_A], isp_dev->wreg_buff.bsize, DMA_TO_DEVICE);
 
 	isp_dev->ops->hw_start_apb_dma(isp_dev);
 	isp_dev->ops->hw_manual_trigger_apb_dma(isp_dev);
@@ -288,6 +301,9 @@ int isp_subdev_start_auto_dma(struct isp_dev_t *isp_dev)
 {
 	if (isp_dev->apb_dma == 0)
 		return 0;
+
+	memcpy(isp_dev->wreg_buff.vaddr[AML_PLANE_A], isp_dev->wreg_buff.vmaddr[AML_PLANE_A], isp_dev->wreg_buff.bsize);
+	dma_sync_single_for_device(isp_dev->dev, isp_dev->wreg_buff.addr[AML_PLANE_A], isp_dev->wreg_buff.bsize, DMA_TO_DEVICE);
 
 	isp_dev->ops->hw_start_apb_dma(isp_dev);
 	isp_dev->ops->hw_auto_trigger_apb_dma(isp_dev);
@@ -311,7 +327,8 @@ int isp_subdev_update_auto_dma(struct isp_dev_t *isp_dev)
 	if ((isp_dev->apb_dma == 0) || (isp_dev->twreg_cnt == 0))
 		return 0;
 
-	dma_sync_single_for_device(isp_dev->dev,isp_dev->wreg_buff.addr[AML_PLANE_A], isp_dev->wreg_buff.bsize, DMA_TO_DEVICE);
+	memcpy(isp_dev->wreg_buff.vaddr[AML_PLANE_A], isp_dev->wreg_buff.vmaddr[AML_PLANE_A], isp_dev->twreg_cnt * 8);
+	//dma_sync_single_for_device(isp_dev->dev,isp_dev->wreg_buff.addr[AML_PLANE_A], isp_dev->twreg_cnt * 8, DMA_TO_DEVICE);
 
 	isp_dev->ops->hw_start_apb_dma(isp_dev);
 
@@ -505,13 +522,17 @@ int isp_subdev_ctrls_init(struct isp_dev_t *isp_dev)
 
 }
 
+//#define  IRQ_TIME_DEBUG
 static irqreturn_t isp_subdev_irq_handler(int irq, void *dev)
 {
 	int status = 0, id = 0;
 	unsigned long flags;
 	struct isp_dev_t *isp_dev = dev;
 	struct aml_video *video;
-
+#ifdef IRQ_TIME_DEBUG
+	u64 start_time, end_time, diff;
+	start_time = ktime_get_real_ns();
+#endif
 	if (isp_dev->isp_status == STATUS_STOP) {
 		if (aml_adap_global_get_vdev() == isp_dev->index) {
 			pr_err("ISP%d: Stoped and Irq ignore\n", isp_dev->index);
@@ -537,7 +558,11 @@ static irqreturn_t isp_subdev_irq_handler(int irq, void *dev)
 	}
 
 	spin_unlock_irqrestore(&isp_dev->irq_lock, flags);
-
+#ifdef IRQ_TIME_DEBUG
+	end_time = ktime_get_real_ns();
+	diff = end_time - start_time;
+	pr_err("time consumed = %lld ns\n", diff);
+#endif
 	return IRQ_HANDLED;
 }
 
@@ -752,6 +777,133 @@ void aml_isp_subdev_deinit(void *c_dev)
 	dev_info(isp_dev->dev, "ISP%u: subdev deinit\n", isp_dev->index);
 }
 
+static int isp_proc_show(struct seq_file *proc_entry, void *arg ) {
+
+	struct isp_dev_t *isp_dev = proc_entry->private;
+	u32 *isp_info = isp_dev->ops->hw_status(isp_dev);
+
+	seq_printf(
+		proc_entry, "\n****************** ISP MODULE PARAM *******************\n");
+
+	seq_printf(proc_entry, " ------- Pubattr Info ------- \n");
+	seq_printf(proc_entry, "%8s" "%8s" "%8s" "%8s" "%8s \n"
+				, "WndX", "WndY", "snsW", "snsH", "bpp");
+	seq_printf(proc_entry, "%8d" "%8d" "%8d" "%8d" "%8d \n\n",
+					isp_dev->fmt.xstart,
+					isp_dev->fmt.ystart,
+					isp_dev->fmt.width,
+					isp_dev->fmt.height,
+					isp_dev->fmt.bpp);
+
+	seq_printf(proc_entry, " ------- Isp Solution ------- \n");
+	seq_printf(proc_entry, "%15s" "%15s \n", "input vsize", "input hsize");
+	seq_printf(proc_entry, "%15d" "%15d \n\n", *isp_info, *(isp_info + 1) );
+
+	seq_printf(proc_entry, " ------- wrmif solution ------- \n");
+	seq_printf(proc_entry, "%15s" "%15s \n", "fmt hsize", "fmt vsize");
+	seq_printf(proc_entry, "%4s" "%11d" "%15d \n", "chn0", *(isp_info + 2), *(isp_info + 3) );
+	seq_printf(proc_entry, "%4s" "%11d" "%15d \n", "chn1", *(isp_info + 4), *(isp_info + 5) );
+	seq_printf(proc_entry, "%4s" "%11d" "%15d \n", "chn2", *(isp_info + 6), *(isp_info + 7) );
+	seq_printf(proc_entry, "%4s" "%11d" "%15d \n", "chn3", *(isp_info + 8), *(isp_info + 9) );
+	seq_printf(proc_entry, "%s\n", "wrmif_en");
+	seq_printf(proc_entry, "0x%02x\n", *(isp_info + 10));
+
+	seq_printf(proc_entry, "%15s" "%15s \n", "crp2 vsize", "crp2 hsize");
+	seq_printf(proc_entry, "%4s" "%11d" "%15d \n", "pps0", *(isp_info + 11), *(isp_info + 12) );
+	seq_printf(proc_entry, "%4s" "%11d" "%15d \n", "pps1", *(isp_info + 13), *(isp_info + 14) );
+	seq_printf(proc_entry, "%4s" "%11d" "%15d \n\n", "pps2", *(isp_info + 15), *(isp_info + 16) );
+
+	seq_printf(proc_entry, " ------- 3a solution ------- \n");
+	seq_printf(proc_entry, "%18s" "%18s \n", "af stat vsize", "af stat hsize");
+	seq_printf(proc_entry, "%18d" "%18d \n", *(isp_info + 17), *(isp_info + 18) );
+	seq_printf(proc_entry, "%18s" "%18s \n", "ae stat vsize", "ae stat hsize");
+	seq_printf(proc_entry, "%18d" "%18d \n", *(isp_info + 19), *(isp_info + 20) );
+	seq_printf(proc_entry, "%18s" "%18s \n", "awb stat vsize", "awb stat hsize");
+	seq_printf(proc_entry, "%18d" "%18d \n\n", *(isp_info + 21), *(isp_info + 22) );
+
+	seq_printf(proc_entry, " ------- dma configuration ------- \n");
+	seq_printf(proc_entry, "%10s" "%5s" "%15s" "%15s" "%15s" "%15s \n"
+					, "chx_size0-4", "af", "awb", "ae", "flkr", "post");
+	seq_printf(proc_entry, "%16d" "%15d" "%15d" "%15d" "%15d \n\n",
+					*(isp_info + 23),
+					*(isp_info + 24),
+					*(isp_info + 25),
+					*(isp_info + 26),
+					*(isp_info + 27));
+	seq_printf(proc_entry, "%15s \n", "wreg_cnt");
+	seq_printf(proc_entry, "%15d\n\n", isp_dev->wreg_cnt);
+
+	seq_printf(proc_entry, " ------- isp checksum ------- \n");
+	seq_printf(proc_entry, " -- ro_checksum_dat_[0-9] -- \n");
+	seq_printf(proc_entry, "%15s" "%15s" "%15s" "%15s" "%15s \n"
+					, "ofe_din", "ofe_dout", "dfe_dout", "obe_dout", "dms_dout");
+	seq_printf(proc_entry, "%15u" "%15u" "%15u" "%15u" "%15u \n\n",
+					*(isp_info + 28),
+					*(isp_info + 29),
+					*(isp_info + 30),
+					*(isp_info + 31),
+					*(isp_info + 32));
+	seq_printf(proc_entry, "%15s" "%15s" "%15s" "%15s" "%15s \n"
+					, "post_dout", "post_ir", "disp_0", "disp_1", "disp_2");
+	seq_printf(proc_entry, "%15u" "%15u" "%15u" "%15u" "%15u \n\n",
+					*(isp_info + 33),
+					*(isp_info + 34),
+					*(isp_info + 35),
+					*(isp_info + 36),
+					*(isp_info + 37));
+
+	seq_printf(proc_entry, "******************* PROC END *******************\n\n");
+
+
+	return 0;
+}
+
+static int isp_debug_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, isp_proc_show, PDE_DATA(inode));
+}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+static const struct proc_ops isp_proc_file_ops = {
+	/// kernel 5.15
+	.proc_open = isp_debug_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+#else
+static const struct file_operations isp_proc_file_ops = {
+	.open = isp_debug_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+#endif
+
+static int isp_proc_init(struct isp_dev_t *isp_dev)
+{
+	int rtn = -1;
+	char file_name[50] = {0};
+	struct aml_subdev *subdev = &isp_dev->subdev;
+
+	sprintf(file_name, "%s%d", "isp", isp_dev->index);
+	subdev->proc_node_entry = proc_create_data(file_name, 0644, NULL, &isp_proc_file_ops, isp_dev);
+	if (subdev->proc_node_entry == NULL) {
+		dev_err(isp_dev->dev, "isp%u create proc failed!\n", isp_dev->index);
+		return rtn;
+	}
+
+	return 0;
+}
+
+static void isp_proc_exit(struct isp_dev_t *isp_dev) {
+
+	char file_name[50] = {0};
+	sprintf(file_name, "%s%d", "isp", isp_dev->index);
+
+	remove_proc_entry(file_name, NULL);
+}
+
 int aml_isp_subdev_register(struct isp_dev_t *isp_dev)
 {
 	int rtn = -1;
@@ -786,6 +938,10 @@ int aml_isp_subdev_register(struct isp_dev_t *isp_dev)
 	subdev->ops = &isp_subdev_ops;
 	subdev->priv = isp_dev;
 
+	rtn = isp_proc_init(isp_dev);
+	if (rtn)
+		goto error_rtn;
+
 	isp_subdev_ctrls_init(isp_dev);
 
 	rtn = aml_subdev_register(subdev);
@@ -800,5 +956,6 @@ error_rtn:
 
 void aml_isp_subdev_unregister(struct isp_dev_t *isp_dev)
 {
+	isp_proc_exit(isp_dev);
 	aml_subdev_unregister(&isp_dev->subdev);
 }

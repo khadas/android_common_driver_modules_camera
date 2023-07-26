@@ -221,6 +221,7 @@ struct adapter_dev_ops {
 	void (*hw_irq_en)(void *a_dev);
 	void (*hw_irq_dis)(void *a_dev);
 	void (*hw_offline_mode)(void *a_dev);
+	u32 *(*hw_fe_status)(void *a_dev);
 };
 
 struct adapter_dev_t {
@@ -268,7 +269,6 @@ void aml_adap_subdev_unregister(struct adapter_dev_t *adap_dev);
 extern const struct adapter_dev_ops adap_dev_hw_ops;
 
 struct adapter_dev_t *adap_get_dev(int index);
-
 
 struct adapter_global_info *aml_adap_global_get_info(void);
 int aml_adap_global_init(void);

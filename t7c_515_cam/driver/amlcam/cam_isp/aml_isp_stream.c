@@ -40,7 +40,11 @@ static const struct aml_format img_support_format[] = {
 	{0, 0, 0, 0, 0, V4L2_PIX_FMT_NV21, 2, 12},
 	{0, 0, 0, 0, 0, V4L2_PIX_FMT_GREY, 1, 8},
 	{0, 0, 0, 0, 0, V4L2_PIX_FMT_RGB24, 1, 24},
+	{0, 0, 0, 0, 0, V4L2_PIX_FMT_BGR24, 1, 24},
 	{0, 0, 0, 0, 0, V4L2_PIX_FMT_YUYV, 1, 16},
+	{0, 0, 0, 0, 0, V4L2_PIX_FMT_YVYU, 1, 16},
+	{0, 0, 0, 0, 0, V4L2_PIX_FMT_UYVY, 1, 16},
+	{0, 0, 0, 0, 0, V4L2_PIX_FMT_VYUY, 1, 16},
 	{0, 0, 0, 0, 0, V4L2_PIX_FMT_SBGGR8,  1, 8},
 	{0, 0, 0, 0, 0, V4L2_PIX_FMT_SBGGR10, 1, 16},
 	{0, 0, 0, 0, 0, V4L2_PIX_FMT_SBGGR12, 1, 16},
@@ -223,12 +227,16 @@ void isp_drv_convert_format(struct aml_video *vd, struct aml_format *fmt)
 		fmt->size = fmt->width * fmt->height;
 	break;
 	case V4L2_PIX_FMT_RGB24:
+	case V4L2_PIX_FMT_BGR24:
 		fmt->bpp = 24;
 		fmt->nplanes = 1;
 		fmt->fourcc = AML_FMT_YUV444;
 		fmt->size = fmt->width * fmt->height * 3;
 	break;
 	case V4L2_PIX_FMT_YUYV:
+	case V4L2_PIX_FMT_YVYU:
+	case V4L2_PIX_FMT_UYVY:
+	case V4L2_PIX_FMT_VYUY:
 		fmt->bpp = 16;
 		fmt->nplanes = 1;
 		fmt->fourcc = AML_FMT_YUV422;

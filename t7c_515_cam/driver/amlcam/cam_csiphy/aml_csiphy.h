@@ -47,6 +47,7 @@ struct csiphy_dev_ops {
 	u32 (*hw_version)(void *c_dev, int idx);
 	int (*hw_start)(void *c_dev, int idx, int lanes, s64 link_freq);
 	void (*hw_stop)(void *c_dev, int idx);
+	u32 *(*hw_csiphy_info)(void *c_dev);
 };
 
 struct csiphy_dev_t {
@@ -58,7 +59,6 @@ struct csiphy_dev_t {
 	void __iomem *csi_dphy;
 	void __iomem *csi_aphy;
 	u32 clock_mode;
-
 	struct clk *csiphy_clk;
 	struct clk *csiphy_clk1;
 
@@ -73,7 +73,11 @@ struct csiphy_dev_t {
 	struct v4l2_async_notifier *notifier;
 
 	const struct csiphy_dev_ops *ops;
+
+	u32 lanecnt;
+	u32 lanebps;
 };
+
 
 void csiphy_subdev_suspend(struct csiphy_dev_t *csiphy_dev);
 int csiphy_subdev_resume(struct csiphy_dev_t *csiphy_dev);

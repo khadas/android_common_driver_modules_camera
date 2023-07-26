@@ -294,6 +294,48 @@ static void lswb_rad_cfg_base(struct isp_dev_t *isp_dev, void *base)
 	isp_hw_lut_wend(isp_dev);
 }
 
+uint32_t aisp_sqrt64( uint64_t arg )
+{
+	uint64_t mask = (uint64_t)1 << 31;
+	uint32_t res = 0;
+	int32_t i = 0;
+
+	for ( i = 0; i < 32; i++ ) {
+		if ( ( res + ( mask >> i ) ) * ( res + ( mask >> i ) ) <= arg )
+			res = res + ( mask >> i );
+	}
+	return res;
+}
+
+static void lswb_rad_center_base(struct isp_dev_t *isp_dev, void *base)
+{
+	aisp_base_cfg_t *base_cfg = base;
+	aisp_setting_fixed_cfg_t *set_cfg = &base_cfg->fxset_cfg;
+	u32 center_x = set_cfg->lns_center_xy[0];
+	u32 center_y = set_cfg->lns_center_xy[1];
+
+	int32_t radius_max_x = MAX(center_x, (int32_t)(isp_dev->fmt.width - center_x));
+	int32_t radius_max_y = MAX(center_y, (int32_t)(isp_dev->fmt.height - center_y));
+	int32_t max_radius = MAX(radius_max_x, radius_max_y);
+	int32_t rad_mult_gain = (int)((1ULL<<(11+8))*max_radius/aisp_sqrt64(((uint64_t)(radius_max_x*radius_max_x+radius_max_y*radius_max_y))<<16));
+	int32_t rad_scale_x = (1<<24)/(max_radius);
+	int32_t rad_scale_y = (1<<24)/(max_radius);
+
+	isp_reg_update_bits(isp_dev, ISP_LSWB_RS_CENTER, center_x, 16, 16);
+	isp_reg_update_bits(isp_dev, ISP_LSWB_RS_CENTER, center_y, 0, 16);
+
+	isp_reg_update_bits(isp_dev, ISP_CUBIC_RAD_CENTER, center_x, 16, 16);
+	isp_reg_update_bits(isp_dev, ISP_CUBIC_RAD_CENTER, center_y, 0, 16);
+
+	isp_reg_update_bits(isp_dev, ISP_LSWB_RS_XSCALE, rad_scale_x, 0, 16);
+	isp_reg_update_bits(isp_dev, ISP_LSWB_RS_YSCALE, rad_scale_y, 0, 16);
+
+	isp_reg_update_bits(isp_dev, ISP_LSWB_RS_CENTEROFST_0, rad_mult_gain, 0, 12);
+	isp_reg_update_bits(isp_dev, ISP_LSWB_RS_CENTEROFST_1, rad_mult_gain, 0, 12);
+	isp_reg_update_bits(isp_dev, ISP_LSWB_RS_CENTEROFST_2, rad_mult_gain, 0, 12);
+	isp_reg_update_bits(isp_dev, ISP_LSWB_RS_CENTEROFST_3, rad_mult_gain, 0, 12);
+}
+
 static void lswb_rad_cfg_strength(struct isp_dev_t *isp_dev, void *lns)
 {
 	u32 val = 0;
@@ -364,23 +406,17 @@ static void lswb_mesh_cfg_param(struct isp_dev_t *isp_dev, void *mesh)
 static void lswb_mesh_cfg_base(struct isp_dev_t *isp_dev, void *base)
 {
 	int i = 0;
-	u32 val = 0;
 	u32 cnt = 0;
 	aisp_base_cfg_t *base_cfg = base;
 	aisp_lut_fixed_cfg_t *lut_cfg = &base_cfg->fxlut_cfg;
 
 	isp_hw_lut_wstart(isp_dev, LSWB_MESH_LUT_CFG);
 
-	cnt = ISP_ARRAY_SIZE(lut_cfg->lns_mesh_lut) / 4;
+	cnt = ISP_ARRAY_SIZE(lut_cfg->lns_mesh_lut);
 
 	isp_reg_write(isp_dev, ISP_LNS_MESH_LUT_ADDR, 0);
 	for (i = 0; i < cnt; i++) {
-		val = (lut_cfg->lns_mesh_lut[i * 4 + 0] << 0) |
-			(lut_cfg->lns_mesh_lut[i * 4 + 1] << 8) |
-			(lut_cfg->lns_mesh_lut[i * 4 + 2] << 16) |
-			(lut_cfg->lns_mesh_lut[i * 4 + 3] << 24);
-
-		isp_reg_write(isp_dev, ISP_LNS_MESH_LUT_DATA, val);
+		isp_reg_write(isp_dev, ISP_LNS_MESH_LUT_DATA, lut_cfg->lns_mesh_lut[i]);
 	}
 
 	isp_hw_lut_wend(isp_dev);
@@ -477,7 +513,7 @@ void isp_lens_cfg_size(struct isp_dev_t *isp_dev, struct aml_format *fmt)
 
 	val = (1 << 24) / (xsize >> 1);
 	isp_reg_update_bits(isp_dev, ISP_LSWB_RS_XSCALE, val, 0, 16);
-	val = (1 << 24) / (ysize >> 1);
+	val = (1 << 24) / (xsize >> 1);
 	isp_reg_update_bits(isp_dev, ISP_LSWB_RS_YSCALE, val, 0, 16);
 
 	val = (1 << 11) * xsize / sqrt32(xsize * xsize + ysize * ysize);
@@ -600,6 +636,7 @@ void isp_lens_cfg_param(struct isp_dev_t *isp_dev, struct aml_buffer *buff)
 		lswb_wb_cfg_base(isp_dev, &param->base_cfg);
 		lswb_rad_cfg_base(isp_dev, &param->base_cfg);
 		lswb_mesh_cfg_base(isp_dev, &param->base_cfg);
+		lswb_rad_center_base(isp_dev, &param->base_cfg);
 	}
 
 	if (param->pvalid.aisp_lns) {

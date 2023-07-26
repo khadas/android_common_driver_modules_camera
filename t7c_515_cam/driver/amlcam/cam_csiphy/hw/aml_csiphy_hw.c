@@ -29,24 +29,23 @@ static int mipi_reg_write(void *c_dev, int idx, u32 addr, u32 val)
 	void __iomem *base = NULL;
 	struct csiphy_dev_t *csiphy_dev = c_dev;
 
-	switch (idx)
-	{
-	case DPHY_MD:
-		base = csiphy_dev->csi_dphy + MPPI_DPHY_BASE;
-		break;
-	case HOST_MD:
-		base = csiphy_dev->csi_dphy + MPPI_HOST_BASE;
-		break;
-	case APHY_MD:
-		base = csiphy_dev->csi_aphy;
-		break;
-	case PROC_MD:
-		base = csiphy_dev->csi_dphy + MPPI_PROC_BASE;
-		break;
+	switch (idx) {
+		case DPHY_MD:
+			base = csiphy_dev->csi_dphy + MPPI_DPHY_BASE;
+			break;
+		case HOST_MD:
+			base = csiphy_dev->csi_dphy + MPPI_HOST_BASE;
+			break;
+		case APHY_MD:
+			base = csiphy_dev->csi_aphy;
+			break;
+		case PROC_MD:
+			base = csiphy_dev->csi_dphy + MPPI_PROC_BASE;
+			break;
 
-	default:
-		pr_err("Error input idx\n");
-		return rtn;
+		default:
+			pr_err("Error input idx\n");
+			return rtn;
 	}
 
 	writel(val, base + addr);
@@ -60,24 +59,23 @@ static int mipi_reg_read(void *c_dev, int idx, u32 addr, u32 *val)
 	void __iomem *base = NULL;
 	struct csiphy_dev_t *csiphy_dev = c_dev;
 
-	switch (idx)
-	{
-	case DPHY_MD:
-		base = csiphy_dev->csi_dphy + MPPI_DPHY_BASE;
-		break;
-	case HOST_MD:
-		base = csiphy_dev->csi_dphy + MPPI_HOST_BASE;
-		break;
-	case APHY_MD:
-		base = csiphy_dev->csi_aphy;
-		break;
-	case PROC_MD:
-		base = csiphy_dev->csi_dphy + MPPI_PROC_BASE;
-		break;
+	switch (idx) {
+		case DPHY_MD:
+			base = csiphy_dev->csi_dphy + MPPI_DPHY_BASE;
+			break;
+		case HOST_MD:
+			base = csiphy_dev->csi_dphy + MPPI_HOST_BASE;
+			break;
+		case APHY_MD:
+			base = csiphy_dev->csi_aphy;
+			break;
+		case PROC_MD:
+			base = csiphy_dev->csi_dphy + MPPI_PROC_BASE;
+			break;
 
-	default:
-		pr_err("Error input idx\n");
-		return rtn;
+		default:
+			pr_err("Error input idx\n");
+			return rtn;
 	}
 
 	*val = readl(base + addr);
@@ -89,35 +87,24 @@ static int aphy_cfg(void *c_dev, int idx, int lanes, int bps)
 {
 	int module = APHY_MD;
 
-	if (idx < 2)
-	{
+	if (idx < 2) {
 		mipi_reg_write(c_dev, module, MIPI_CSI_2M_PHY2_CNTL1, 0x3f425c00);
-		if (lanes == 4)
-		{
+		if (lanes == 4) {
 			mipi_reg_write(c_dev, module, MIPI_CSI_2M_PHY2_CNTL2, 0x033a0000);
-		}
-		else
-		{
+		} else {
 			mipi_reg_write(c_dev, module, MIPI_CSI_2M_PHY2_CNTL2, 0x333a0000);
 		}
-		if (lanes <= 2)
-		{
+		if (lanes <= 2) {
 			mipi_reg_write(c_dev, module, MIPI_CSI_2M_PHY2_CNTL3, 0x3800000);
 		}
-	}
-	else
-	{
+	} else {
 		mipi_reg_write(c_dev, module, MIPI_CSI_2M_PHY2_CNTL4, 0x3f425c00);
-		if (lanes == 4)
-		{
+		if (lanes == 4) {
 			mipi_reg_write(c_dev, module, MIPI_CSI_2M_PHY2_CNTL5, 0x033a0000);
-		}
-		else
-		{
+		} else {
 			mipi_reg_write(c_dev, module, MIPI_CSI_2M_PHY2_CNTL5, 0x333a0000);
 		}
-		if (lanes <= 2)
-		{
+		if (lanes <= 2) {
 			mipi_reg_write(c_dev, module, MIPI_CSI_2M_PHY2_CNTL6, 0x3800000);
 		}
 	}
@@ -141,12 +128,9 @@ static int dphy_cfg(void *c_dev, int idx, int lanes, u32 bps)
 
 	// mipi_reg_write(c_dev, module, MIPI_PHY_CTRL, 0x80000000);//soft reset bit
 	// mipi_reg_write(c_dev, module, MIPI_PHY_CTRL, 0);//release soft reset bit
-	if (csiphy_dev->clock_mode)
-	{
+	if (csiphy_dev->clock_mode) {
 		mipi_reg_write(c_dev, module, MIPI_PHY_CLK_LANE_CTRL, 0x58); // MIPI_PHY_CLK_LANE_CTRL
-	}
-	else
-	{
+	} else {
 		mipi_reg_write(c_dev, module, MIPI_PHY_CLK_LANE_CTRL, 0x3d8); // 3d8:continue mode
 	}
 	mipi_reg_write(c_dev, module, MIPI_PHY_TCLK_MISS, 0x9);		// clck miss = 50 ns --(x< 60 ns)
@@ -164,21 +148,15 @@ static int dphy_cfg(void *c_dev, int idx, int lanes, u32 bps)
 	mipi_reg_write(c_dev, module, MIPI_PHY_TWD_HS, 0x400000);
 	mipi_reg_write(c_dev, module, MIPI_PHY_DATA_LANE_CTRL, 0x0);
 	mipi_reg_write(c_dev, module, MIPI_PHY_DATA_LANE_CTRL1, 0x3 | (0x1f << 2) | (0x3 << 7)); // 446mbps 5ff, 223mbps 1ff    // enable data lanes pipe line and hs sync bit err.
-	if (lanes <= 2)
-	{
-		if ((idx & 0x01) == 0)
-		{
+	if (lanes <= 2) {
+		if ((idx & 0x01) == 0) {
 			mipi_reg_write(c_dev, module, MIPI_PHY_MUX_CTRL0, 0x000001ff);
 			mipi_reg_write(c_dev, module, MIPI_PHY_MUX_CTRL1, 0x000201ff);
-		}
-		else
-		{
+		} else {
 			mipi_reg_write(c_dev, module, MIPI_PHY_MUX_CTRL0, 0x123ff);
 			mipi_reg_write(c_dev, module, MIPI_PHY_MUX_CTRL1, 0x1ff01);
 		}
-	}
-	else
-	{
+	} else {
 		mipi_reg_write(c_dev, module, MIPI_PHY_MUX_CTRL0, 0x00000123);
 		mipi_reg_write(c_dev, module, MIPI_PHY_MUX_CTRL1, 0x00020123);
 	}
@@ -238,7 +216,6 @@ static int csiphy_hw_start(void *c_dev, int idx, int lanes, s64 link_freq)
 	aphy_cfg(c_dev, idx, lanes, bps);
 	dphy_cfg(c_dev, idx, lanes, bps);
 	host_cfg(c_dev, idx, lanes - 1);
-
 	pr_info("CSIPHY%u: hw start\n", csiphy_dev->index);
 
 	return 0;
@@ -255,9 +232,39 @@ static void csiphy_hw_stop(void *c_dev, int idx)
 	return;
 }
 
+static u32 *csiphy_hw_info(void *c_dev)
+{
+	int module = DPHY_MD;
+	static u32 debuginfo[15];
+
+	mipi_reg_read(c_dev, module, MIPI_PHY_CLK_LANE_STS, &debuginfo[0]);
+	mipi_reg_read(c_dev, module, MIPI_PHY_DATA_LANE0_STS, &debuginfo[1]);
+	mipi_reg_read(c_dev, module, MIPI_PHY_DATA_LANE1_STS, &debuginfo[2]);
+	mipi_reg_read(c_dev, module, MIPI_PHY_DATA_LANE2_STS, &debuginfo[3]);
+	mipi_reg_read(c_dev, module, MIPI_PHY_DATA_LANE3_STS, &debuginfo[4]);
+	mipi_reg_read(c_dev, module, MIPI_PHY_MUX_CTRL0, &debuginfo[5]);
+	mipi_reg_read(c_dev, module, MIPI_PHY_MUX_CTRL1, &debuginfo[6]);
+
+	module = APHY_MD;
+
+	mipi_reg_read(c_dev, module, MIPI_CSI_2M_PHY2_CNTL1, &debuginfo[7]);
+	mipi_reg_read(c_dev, module, MIPI_CSI_2M_PHY2_CNTL2, &debuginfo[8]);
+	mipi_reg_read(c_dev, module, MIPI_CSI_2M_PHY2_CNTL3, &debuginfo[9]);
+	mipi_reg_read(c_dev, module, MIPI_CSI_2M_PHY2_CNTL4, &debuginfo[10]);
+	mipi_reg_read(c_dev, module, MIPI_CSI_2M_PHY2_CNTL5, &debuginfo[11]);
+	mipi_reg_read(c_dev, module, MIPI_CSI_2M_PHY2_CNTL6, &debuginfo[12]);
+
+	module = HOST_MD;
+	mipi_reg_read(c_dev, module, CSI2_HOST_ERR1, &debuginfo[13]);
+	mipi_reg_read(c_dev, module, CSI2_HOST_ERR2, &debuginfo[14]);
+
+	return debuginfo;
+}
+
 const struct csiphy_dev_ops csiphy_dev_hw_ops = {
 	.hw_reset = csiphy_hw_reset,
 	.hw_version = csiphy_hw_version,
 	.hw_start = csiphy_hw_start,
 	.hw_stop = csiphy_hw_stop,
+	.hw_csiphy_info = csiphy_hw_info,
 };

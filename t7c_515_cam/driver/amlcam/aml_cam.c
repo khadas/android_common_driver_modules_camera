@@ -266,48 +266,6 @@ static int cam_create_links(struct cam_device *cam_dev)
 	return rtn;
 }
 
-static int cam_devnode_register(struct cam_device *cam_dev)
-{
-	int rtn = 0;
-
-	rtn = cam_videos_register(cam_dev);
-	if (rtn < 0) {
-		dev_err(cam_dev->dev, "Failed to register video node: %d\n", rtn);
-		goto error_return;
-	}
-
-	rtn = cam_create_links(cam_dev);
-	if (rtn) {
-		dev_err(cam_dev->dev, "Failed to create links: %d\n", rtn);
-		goto error_video;
-	}
-
-	rtn = v4l2_device_register_subdev_nodes(&cam_dev->v4l2_dev);
-	if (rtn < 0) {
-		dev_err(cam_dev->dev, "Failed to register sd node: %d\n", rtn);
-		goto error_video;
-	}
-
-	rtn = media_device_register(&cam_dev->media_dev);
-	if (rtn) {
-		dev_err(cam_dev->dev, "Failed to register media: %d\n", rtn);
-		goto error_video;
-	}
-
-	return rtn;
-
-error_video:
-	cam_videos_unregister(cam_dev);
-error_return:
-	return rtn;
-}
-
-static void cam_devnode_unregister(struct cam_device *cam_dev)
-{
-	media_device_unregister(&cam_dev->media_dev);
-	cam_videos_unregister(cam_dev);
-}
-
 static int cam_async_notifier_bound(struct v4l2_async_notifier *async,
 				       struct v4l2_subdev *subdev,
 				       struct v4l2_async_subdev *asd)
@@ -365,17 +323,21 @@ static int cam_async_notifier_complete(struct v4l2_async_notifier *async)
 				goto error_return;
 		}
 	}
-	rtn = cam_devnode_register(cam_dev);
-	if (rtn) {
-		dev_info(cam_dev->dev, "cam_devnode_register fail. ret %d\n", rtn);
+
+	rtn = v4l2_device_register_subdev_nodes(&cam_dev->v4l2_dev);
+	if (rtn < 0) {
+		dev_err(cam_dev->dev, "Failed to register sd node: %d\n", rtn);
+		goto error_video;
 	}
 
 	dev_info(cam_dev->dev, "Success async notifier complete\n");
 
-error_return:
-
 	return rtn;
 
+error_video:
+	cam_videos_unregister(cam_dev);
+error_return:
+	return rtn;
 }
 
 static const struct v4l2_async_notifier_operations cam_async_notifier_ops = {
@@ -383,6 +345,48 @@ static const struct v4l2_async_notifier_operations cam_async_notifier_ops = {
 	.unbind = cam_async_notifier_unbind,
 	.complete = cam_async_notifier_complete,
 };
+
+static int cam_devnode_register(struct cam_device *cam_dev)
+{
+	int rtn = 0;
+
+	rtn = cam_videos_register(cam_dev);
+	if (rtn < 0) {
+		dev_err(cam_dev->dev, "Failed to register video node: %d\n", rtn);
+		goto error_return;
+	}
+
+	rtn = cam_create_links(cam_dev);
+	if (rtn) {
+		dev_err(cam_dev->dev, "Failed to create links: %d\n", rtn);
+		goto error_video;
+	}
+
+	rtn = v4l2_device_register_subdev_nodes(&cam_dev->v4l2_dev);
+	if (rtn < 0) {
+		dev_err(cam_dev->dev, "Failed to register sd node: %d\n", rtn);
+		goto error_video;
+	}
+
+	rtn = media_device_register(&cam_dev->media_dev);
+	if (rtn) {
+		dev_err(cam_dev->dev, "Failed to register media: %d\n", rtn);
+		goto error_video;
+	}
+
+	return rtn;
+
+error_video:
+	cam_videos_unregister(cam_dev);
+error_return:
+	return rtn;
+}
+
+static void cam_devnode_unregister(struct cam_device *cam_dev)
+{
+	media_device_unregister(&cam_dev->media_dev);
+	cam_videos_unregister(cam_dev);
+}
 
 static int cam_async_notifier_register(struct cam_device *cam_dev)
 {
@@ -555,7 +559,14 @@ static int cam_probe(struct platform_device *pdev)
 		goto error_subdevs_register;
 	}
 
+	rtn = cam_devnode_register(cam_dev);
+	if (rtn)
+		goto error_async_register;
+
 	return rtn;
+
+error_async_register:
+	v4l2_async_notifier_unregister(&cam_dev->notifier);
 
 error_subdevs_register:
 	cam_subdevs_unregister(cam_dev);

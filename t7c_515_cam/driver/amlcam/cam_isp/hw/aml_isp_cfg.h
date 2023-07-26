@@ -574,6 +574,8 @@ typedef struct aisp_setting_fixed_cfg_s {
 	u32 sqrt1_stp[8];
 	u32 eotf1_num[8];
 	u32 eotf1_stp[8];
+	u32 lns_center_xy[2];
+	u32 wb_stats_local_mode;
 } aisp_setting_fixed_cfg_t;
 
 typedef struct aisp_lut_fixed_cfg_s {
@@ -588,7 +590,7 @@ typedef struct aisp_lut_fixed_cfg_s {
 	u32 eotf0_lut[33];
 	u32 eotf1_lut[129];
 	u32 lns_rad_lut129[129*4];
-	u32 lns_mesh_lut[64*64*4];
+	u32 lns_mesh_lut[32*32*4];
 	u32 pst_gamma_lut[129*4];
 	u32 rgb_gamma_lut[129]; // none
 	u32 gtm_lut[129];
@@ -1101,6 +1103,8 @@ typedef struct aisp_cnr_cfg_s {
 	u32 cnr2_satur_blk[1024];
 	u32 cnr2_tdif_rng_lut[16];
 	u32 cnr2_ydif_rng_lut[16];
+	u32 cnr2_pfr_wind_h;
+	u32 cnr2_pfr_wind_v;
 	u32 cnr2_umargin_up;
 	u32 cnr2_umargin_dw;
 	u32 cnr2_vmargin_up;
@@ -1193,7 +1197,7 @@ typedef union {
 		u64  aisp_dhz_enhc    : 1;
 		u64  aisp_peaking     : 1;
 		u64  aisp_misc        : 1;
-		u64  aisp_custom      : 1 ;
+		u64  aisp_custom      : 1;
 		u64  bitRsv           : 29; /* H  ; [35:63] */
 	};
 }  aisp_param_ctrl;

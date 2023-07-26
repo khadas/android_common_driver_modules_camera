@@ -211,6 +211,7 @@ struct isp_dev_ops {
 	int (*hw_auto_trigger_apb_dma)(struct isp_dev_t *isp_dev);
 	int (*hw_fill_rreg_buff)(struct isp_dev_t *isp_dev);
 	int (*hw_fill_gisp_rreg_buff)(struct isp_global_info *g_isp_info);
+	u32 *(*hw_status)(struct isp_dev_t *isp_dev);
 };
 
 int isp_subdev_resume(struct isp_dev_t *isp_dev);

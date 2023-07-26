@@ -44,16 +44,18 @@ static int isp_global_reg_buf_alloc(struct isp_dev_t *isp_dev)
 {
 	u32 rsize;
 	dma_addr_t paddr = 0x0000;
-	void *virtaddr = NULL;
+	void *virtaddr = NULL, *vmaddr = NULL;
 	struct isp_global_info *g_info = isp_global_get_info();
 
 	rsize = 128 * 1024;
 
 	virtaddr = dma_alloc_coherent(isp_dev->dev, rsize, &paddr, GFP_KERNEL);
+	vmaddr = vmalloc(rsize);
 
 	g_info->rreg_buff.nplanes = 1;
 	g_info->rreg_buff.addr[AML_PLANE_A] = paddr;
 	g_info->rreg_buff.vaddr[AML_PLANE_A] = virtaddr;
+	g_info->rreg_buff.vmaddr[AML_PLANE_A] = vmaddr;
 
 	pr_debug("isp global reg alloc\n");
 
@@ -74,8 +76,13 @@ static int isp_global_reg_buf_free(struct isp_dev_t *isp_dev)
 	if (vaddr)
 		dma_free_coherent(isp_dev->dev, rsize, vaddr, (dma_addr_t)paddr);
 
+	vaddr = g_info->rreg_buff.vmaddr[AML_PLANE_A];
+	if (vaddr)
+		vfree(vaddr);
+
 	g_info->rreg_buff.addr[AML_PLANE_A] = 0x0000;
 	g_info->rreg_buff.vaddr[AML_PLANE_A] = NULL;
+	g_info->rreg_buff.vmaddr[AML_PLANE_A] = NULL;
 
 	pr_debug("isp global reg free\n");
 
@@ -103,6 +110,7 @@ int isp_global_manual_apb_dma(int vdev)
 		return -1;
 	}
 
+	memcpy(isp_dev->wreg_buff.vaddr[AML_PLANE_A], isp_dev->wreg_buff.vmaddr[AML_PLANE_A], isp_dev->wreg_buff.bsize);
 	dma_sync_single_for_device(isp_dev->dev,isp_dev->wreg_buff.addr[AML_PLANE_A], isp_dev->wreg_buff.bsize, DMA_TO_DEVICE);
 
 	isp_dev->ops->hw_start_apb_dma(isp_dev);

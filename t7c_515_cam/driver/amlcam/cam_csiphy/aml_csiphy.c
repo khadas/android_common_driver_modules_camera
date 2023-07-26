@@ -26,6 +26,8 @@
 #include <linux/of_graph.h>
 #include <linux/pm_runtime.h>
 #include <linux/pm_domain.h>
+#include <linux/seq_file.h>
+#include <linux/proc_fs.h>
 
 #include <media/v4l2-common.h>
 #include <media/v4l2-fwnode.h>
@@ -35,6 +37,13 @@
 #include "aml_cam.h"
 
 #define AML_CSIPHY_NAME "isp-csiphy"
+
+static struct csiphy_dev_t *g_csiphy_dev[4];
+
+struct csiphy_dev_t *csiphy_get_dev(int idx)
+{
+	return g_csiphy_dev[idx];
+}
 
 static const struct aml_format csiphy_support_formats[] = {
 	{0, 0, 0, 0, MEDIA_BUS_FMT_SBGGR8_1X8, 0, 1, 8},
@@ -116,7 +125,6 @@ static int csiphy_of_parse_ports(struct csiphy_dev_t *csiphy_dev)
 			of_node_put(node);
 			return -EINVAL;
 		}
-
 #ifdef SENSOR_SEARCH
 		sensor_dev = of_fwnode_handle(remote)->dev;
 		if ( sensor_dev->driver && strstr(node->name, sensor_dev->driver->name) ) {
@@ -402,7 +410,6 @@ static int csiphy_subdev_stream_on(void *priv)
 	s64 link_freq = 0;
 	struct csiphy_async_subdev *casd;
 	struct csiphy_dev_t *csiphy_dev = priv;
-
 	rtn = csiphy_subdev_get_link_freq(&csiphy_dev->sd.entity, &link_freq);
 	if (rtn)
 		return rtn;
@@ -410,6 +417,9 @@ static int csiphy_subdev_stream_on(void *priv)
 	rtn = csiphy_subdev_get_casd(&csiphy_dev->sd.entity, &casd);
 	if (rtn || !casd)
 		return rtn;
+
+	csiphy_dev->lanecnt = casd->data_lanes;
+	csiphy_dev->lanebps = link_freq;
 
 	return csiphy_dev->ops->hw_start(csiphy_dev, csiphy_dev->index, casd->data_lanes, link_freq);
 }
@@ -487,6 +497,104 @@ int csiphy_subdev_resume(struct csiphy_dev_t *csiphy_dev)
 	return rtn;
 }
 
+static int csiphy_proc_show(struct seq_file *proc_entry, void *arg ) {
+
+	struct csiphy_dev_t *c_dev = proc_entry->private;
+
+	u32 *mipi_info = c_dev->ops->hw_csiphy_info(c_dev);
+
+	seq_printf(
+		proc_entry, "\n*******************CSIPHY MODULE PARAM*******************\n");
+
+	seq_printf(proc_entry, " ------- PubAttr Info ------- \n");
+	seq_printf(proc_entry, "LaneCnt" "\t" "LaneBps" "\t" "\n");
+	seq_printf(proc_entry, "%d \t %d \t \n\n",
+					c_dev->lanecnt,
+					c_dev->lanebps );
+
+	seq_printf(proc_entry, " ------- Csiphy Info ------- \n");
+	seq_printf(proc_entry,"clk" "\t" "Lane1" "\t" "Lane2" "\t" "Lane3" "\t" "Lane4" "\n");
+	seq_printf(proc_entry, "0x%02x \t 0x%02x \t 0x%02x \t 0x%02x \t 0x%02x \n\n",
+					*mipi_info,
+					*(mipi_info + 1),
+					*(mipi_info + 2),
+					*(mipi_info + 3),
+					*(mipi_info + 4) );
+
+	seq_printf(proc_entry, " ------- Dphy Cfg ------- \n");
+	seq_printf(proc_entry,"MIPI_PHY_MUX_CTRL0" "\t" "MIPI_PHY_MUX_CTRL1" "\t" "\n");
+	seq_printf(proc_entry, "0x%02x \t\t\t 0x%02x \n\n",
+				*(mipi_info + 5),
+				*(mipi_info + 6) );
+
+	seq_printf(proc_entry, " ------- Aphy Cfg ------- \n");
+	seq_printf(proc_entry,"MIPI_CSI_2M_PHY2_CNTL1" "\t" "MIPI_CSI_2M_PHY2_CNTL2" "\t" "MIPI_CSI_2M_PHY2_CNTL3" "\t"
+		"\n" "MIPI_CSI_2M_PHY2_CNTL4" "\t" "MIPI_CSI_2M_PHY2_CNTL5" "\t" "MIPI_CSI_2M_PHY2_CNTL6" "\t" "\n");
+	seq_printf(proc_entry, "0x%02x \t\t 0x%02x \t\t 0x%02x \t\n 0x%02x \t\t 0x%02x \t\t 0x%02x \t\t \n\n",
+				*(mipi_info + 7),
+				*(mipi_info + 8),
+				*(mipi_info + 9),
+				*(mipi_info + 10),
+				*(mipi_info + 11),
+				*(mipi_info + 12) );
+
+	seq_printf(proc_entry,"CSI2_host_err1" "\t" "CSI2_host_err2" "\n");
+	seq_printf(proc_entry, "0x%02x \t\t 0x%02x \n\n",
+					*(mipi_info + 13),
+					*(mipi_info + 14) );
+
+	seq_printf(proc_entry, "******************* PROC END *******************\n\n");
+
+	return 0;
+}
+
+static int csiphy_debug_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, csiphy_proc_show, PDE_DATA(inode));
+}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+static const struct proc_ops csiphy_proc_file_ops = {
+	/// kernel 5.15
+	.proc_open = csiphy_debug_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+#else
+static const struct file_operations csiphy_proc_file_ops = {
+	.open = csiphy_debug_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+#endif
+
+static int csiphy_proc_init(struct csiphy_dev_t *csiphy_dev)
+{
+	int rtn = -1;
+	char file_name[50] = {0};
+	struct aml_subdev *subdev = &csiphy_dev->subdev;
+
+	sprintf(file_name, "%s%d", "csiphy", csiphy_dev->index);
+	subdev->proc_node_entry = proc_create_data(file_name, 0644, NULL, &csiphy_proc_file_ops, csiphy_dev);
+	if (subdev->proc_node_entry == NULL) {
+		dev_err(csiphy_dev->dev, "csiphy%u create proc failed!\n", csiphy_dev->index);
+		return rtn;
+	}
+
+	return 0;
+}
+
+static void csiphy_proc_exit(struct csiphy_dev_t *csiphy_dev) {
+
+	char file_name[50] = {0};
+	sprintf(file_name, "%s%d", "csiphy", csiphy_dev->index);
+
+	remove_proc_entry(file_name, NULL);
+}
+
+
 int aml_csiphy_subdev_register(struct csiphy_dev_t *csiphy_dev)
 {
 	int rtn = -1;
@@ -512,6 +620,10 @@ int aml_csiphy_subdev_register(struct csiphy_dev_t *csiphy_dev)
 	subdev->ops = &csiphy_subdev_ops;
 	subdev->priv = csiphy_dev;
 
+	rtn = csiphy_proc_init(csiphy_dev);
+	if (rtn)
+		goto error_rtn;
+
 	rtn = aml_subdev_register(subdev);
 	if (rtn)
 		goto error_rtn;
@@ -524,6 +636,7 @@ error_rtn:
 
 void aml_csiphy_subdev_unregister(struct csiphy_dev_t *csiphy_dev)
 {
+	csiphy_proc_exit(csiphy_dev);
 	aml_subdev_unregister(&csiphy_dev->subdev);
 }
 
@@ -557,6 +670,7 @@ int aml_csiphy_subdev_init(void *c_dev)
 	csiphy_dev->notifier = &cam_dev->notifier;
 	csiphy_dev->index = cam_dev->index;
 	platform_set_drvdata(pdev, csiphy_dev);
+
 	csiphy_of_parse_ports_clock_mod(csiphy_dev);
 
 	rtn = csiphy_of_parse_ports(csiphy_dev);
@@ -584,6 +698,8 @@ int aml_csiphy_subdev_init(void *c_dev)
 	}
 
 	dev_info(csiphy_dev->dev, "CSIPHY%u: subdev init\n", csiphy_dev->index);
+
+	g_csiphy_dev[cam_dev->index] = csiphy_dev;
 
 	return rtn;
 }

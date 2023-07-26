@@ -104,10 +104,10 @@ static int aml_adap_global_cfg_rd_buf(int vdev)
 {
 	int offset = 0;
 	unsigned long flags;
-	struct aml_video *video;
 	struct aml_buffer *buff;
 	struct adapter_dev_t *a_dev = adap_get_dev(vdev);
 	struct adapter_dev_param *param = &a_dev->param;
+	struct aml_video *video = &a_dev->video[0];
 
 	struct adapter_global_info *g_info = aml_adap_global_get_info();
 
@@ -115,8 +115,6 @@ static int aml_adap_global_cfg_rd_buf(int vdev)
 		return -1;
 
 	spin_lock_irqsave(&g_info->list_lock, flags);
-
-	video = &a_dev->video[0];
 
 	video->id = MODE_MIPI_RAW_SDR_DDR;
 	video->priv = a_dev;
@@ -132,14 +130,12 @@ static int aml_adap_global_cfg_rd_buf(int vdev)
 
 int aml_adap_rd_enable(int vdev)
 {
-	struct aml_video *video = NULL;
 	struct adapter_dev_t *a_dev = adap_get_dev(vdev);
 	struct adapter_dev_param *param = &a_dev->param;
+	struct aml_video *video = &a_dev->video[0];
 
 	if (param->mode != MODE_MIPI_RAW_SDR_DDR)
 		return -1;
-
-	video = &a_dev->video[0];
 
 	video->id = MODE_MIPI_RAW_SDR_DDR;
 	video->priv = a_dev;
@@ -272,7 +268,6 @@ int aml_adap_global_create_thread(void)
 
 		return -1;
 	}
-
 	return 0;
 }
 

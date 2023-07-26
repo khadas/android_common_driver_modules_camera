@@ -55,6 +55,12 @@ static void pk_cfg_cnr(struct isp_dev_t *isp_dev, void *cnr)
 		isp_reg_write(isp_dev, CNR_YDIF_RNG_LUT_0 + i * 4, val);
 	}
 
+	val = c_cfg->cnr2_pfr_wind_h;
+	isp_reg_update_bits(isp_dev, CNR_CTRST_FRG_ALP, val, 4, 3);
+
+	val = c_cfg->cnr2_pfr_wind_v;
+	isp_reg_update_bits(isp_dev, CNR_CTRST_FRG_ALP, val, 0, 3);
+
 	val = (c_cfg->cnr2_umargin_up << 16) |
 		(c_cfg->cnr2_umargin_dw << 0);
 	isp_reg_write(isp_dev, CNR_UMARGIN, val);

@@ -1,19 +1,19 @@
 /* SPDX-License-Identifier: GPL-2.0
-*
-* Copyright (C) 2020 Amlogic or its affiliates
-*
-* This program is free software; you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation; version 2.
-* This program is distributed in the hope that it will be useful, but
-* WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-* or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
-* for more details.
-* You should have received a copy of the GNU General Public License along
-* with this program; if not, write to the Free Software Foundation, Inc.,
-* 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-*
-*/
+ *
+ * Copyright (C) 2020 Amlogic or its affiliates
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2.
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *
+ */
 #include "aml_isp_hw.h"
 #include "aml_isp_reg.h"
 #include <linux/fs.h>
@@ -40,7 +40,7 @@ void isp_hw_lut_wend(struct isp_dev_t *isp_dev)
 u32 isp_reg_read(struct isp_dev_t *isp_dev, u32 addr)
 {
 	u32 val = 0;
-	struct aml_reg *rregs = isp_dev->rreg_buff.vaddr[AML_PLANE_A];
+	struct aml_reg *rregs = isp_dev->rreg_buff.vmaddr[AML_PLANE_A];
 
 	if (isp_dev->apb_dma == 0)
 		val = isp_hwreg_read(isp_dev, addr);
@@ -54,8 +54,8 @@ void isp_reg_write(struct isp_dev_t *isp_dev, u32 addr, u32 val)
 {
 	u32 i = 0;
 	unsigned long flags = 0;
-	struct aml_reg *wregs = isp_dev->wreg_buff.vaddr[AML_PLANE_A];
-	struct aml_reg *rregs = isp_dev->rreg_buff.vaddr[AML_PLANE_A];
+	struct aml_reg *wregs = isp_dev->wreg_buff.vmaddr[AML_PLANE_A];
+	struct aml_reg *rregs = isp_dev->rreg_buff.vmaddr[AML_PLANE_A];
 	struct isp_global_info *g_info = isp_global_get_info();
 
 	if (isp_dev->apb_dma == 0) {
@@ -68,29 +68,29 @@ void isp_reg_write(struct isp_dev_t *isp_dev, u32 addr, u32 val)
 		if (g_info->mode == AML_ISP_SCAM) {
 			wregs[isp_dev->twreg_cnt].addr = isp_dev->phy_base + addr;
 			wregs[isp_dev->twreg_cnt].val = val;
-			isp_dev->wreg_cnt ++;
-			isp_dev->twreg_cnt ++;
+			isp_dev->wreg_cnt++;
+			isp_dev->twreg_cnt++;
 		} else {
 			if (isp_dev->isp_status == STATUS_STOP) {
 				wregs[isp_dev->wreg_cnt].addr = isp_dev->phy_base + addr;
 				wregs[isp_dev->wreg_cnt].val = val;
-				isp_dev->wreg_cnt ++;
-				isp_dev->fwreg_cnt ++;
-				isp_dev->twreg_cnt ++;
+				isp_dev->wreg_cnt++;
+				isp_dev->fwreg_cnt++;
+				isp_dev->twreg_cnt++;
 			} else {
 				if (isp_dev->lutWr.lutSeq == LUT_WSTART) {
 					wregs[isp_dev->wreg_cnt].addr = isp_dev->phy_base + addr;
 					wregs[isp_dev->wreg_cnt].val = val;
-					isp_dev->wreg_cnt ++;
+					isp_dev->wreg_cnt++;
 
 					if (isp_dev->wreg_cnt > isp_dev->twreg_cnt)
-						isp_dev->twreg_cnt ++;
+						isp_dev->twreg_cnt++;
 
 					spin_unlock_irqrestore(&isp_dev->wreg_lock, flags);
 					return;
 				}
 
-				for (i = isp_dev->fwreg_cnt; i < isp_dev->twreg_cnt; i ++) {
+				for (i = isp_dev->fwreg_cnt; i < isp_dev->twreg_cnt; i++) {
 					if (wregs[i].addr == (isp_dev->phy_base + addr)) {
 						wregs[i].addr = isp_dev->phy_base + addr;
 						wregs[i].val = val;
@@ -101,7 +101,7 @@ void isp_reg_write(struct isp_dev_t *isp_dev, u32 addr, u32 val)
 				if (i == isp_dev->twreg_cnt) {
 					wregs[isp_dev->twreg_cnt].addr = isp_dev->phy_base + addr;
 					wregs[isp_dev->twreg_cnt].val = val;
-					isp_dev->twreg_cnt ++;
+					isp_dev->twreg_cnt++;
 				}
 			}
 		}
@@ -183,7 +183,7 @@ int isp_reg_read_bits(struct isp_dev_t *isp_dev, u32 addr, u32 *val, u32 start, 
 		return 0;
 	}
 
-	mask = (1 << len) -1;
+	mask = (1 << len) - 1;
 	orig = isp_reg_read(isp_dev, addr);
 
 	*val = (orig >> start) & mask;
@@ -193,8 +193,8 @@ int isp_reg_read_bits(struct isp_dev_t *isp_dev, u32 addr, u32 *val, u32 start, 
 
 u32 isp_hw_float_convert(u32 data)
 {
-	u32 shift = (1<<31);
-	int exp = 31 -12 + 1;
+	u32 shift = (1 << 31);
+	int exp = 31 - 12 + 1;
 
 	if (data < (1 << 12))
 		return data;
@@ -203,7 +203,7 @@ u32 isp_hw_float_convert(u32 data)
 		if (data & shift)
 			break;
 
-		shift = (shift>>1);
+		shift = (shift >> 1);
 	}
 
 	return ((exp << 12) | (data >> exp));
@@ -222,25 +222,25 @@ int isp_hw_convert_fmt(struct aml_format *fmt)
 	case MEDIA_BUS_FMT_SBGGR12_1X12:
 	case MEDIA_BUS_FMT_SBGGR14_1X14:
 		isp_fmt = ISP_FMT_BGGR;
-	break;
+		break;
 	case MEDIA_BUS_FMT_SRGGB8_1X8:
 	case MEDIA_BUS_FMT_SRGGB10_1X10:
 	case MEDIA_BUS_FMT_SRGGB12_1X12:
 	case MEDIA_BUS_FMT_SRGGB14_1X14:
 		isp_fmt = ISP_FMT_RGGB;
-	break;
+		break;
 	case MEDIA_BUS_FMT_SGRBG8_1X8:
 	case MEDIA_BUS_FMT_SGRBG10_1X10:
 	case MEDIA_BUS_FMT_SGRBG12_1X12:
 	case MEDIA_BUS_FMT_SGRBG14_1X14:
 		isp_fmt = ISP_FMT_GRBG;
-	break;
+		break;
 	case MEDIA_BUS_FMT_SGBRG8_1X8:
 	case MEDIA_BUS_FMT_SGBRG10_1X10:
 	case MEDIA_BUS_FMT_SGBRG12_1X12:
 	case MEDIA_BUS_FMT_SGBRG14_1X14:
 		isp_fmt = ISP_FMT_GBRG;
-	break;
+		break;
 	default:
 		pr_err("ISP: Error input code\n");
 		isp_fmt = ISP_FMT_RGGB;
@@ -385,8 +385,7 @@ static int isp_hw_set_slice_fmt(struct isp_dev_t *isp_dev, struct aml_format *fm
 	int hsize_isp = 0;
 	int ovlp = 0;
 
-	switch (fmt->bpp)
-	{
+	switch (fmt->bpp) {
 	case 6:
 		multiple = 128;
 		break;
@@ -415,8 +414,7 @@ static int isp_hw_set_slice_fmt(struct isp_dev_t *isp_dev, struct aml_format *fm
 	hsize_isp = (hsize_org / 2) + ovlp;
 	if ((hsize_isp * pixel_bit) % multiple == 0)
 		hsize_mipi = hsize_isp;
-	else
-	{
+	else {
 		temp = hsize_isp * pixel_bit / multiple + 1;
 		hsize_mipi = temp * multiple / pixel_bit;
 	}
@@ -473,8 +471,7 @@ static int isp_hw_cfg_slice(struct isp_dev_t *isp_dev, int pos)
 {
 	int i = 0;
 
-	switch (pos)
-	{
+	switch (pos) {
 	case 0:
 		isp_ofe_cfg_slice_size(isp_dev, &isp_dev->lfmt);
 		break;
@@ -487,8 +484,7 @@ static int isp_hw_cfg_slice(struct isp_dev_t *isp_dev, int pos)
 		break;
 	}
 
-	for (i = 0; i < 1; i++)
-	{
+	for (i = 0; i < 1; i++) {
 		isp_dev->aslice[i].pos = pos;
 		isp_disp_cfg_slice(isp_dev, i, &isp_dev->aslice[i]);
 		isp_wrmifx3_cfg_slice(isp_dev, i, &isp_dev->aslice[i]);
@@ -521,8 +517,7 @@ static int isp_hw_cfg_pattern(struct isp_dev_t *isp_dev, struct aml_format *fmt)
 	int rtn = -EINVAL;
 	struct aml_format timgen;
 
-	switch (isp_dev->index)
-	{
+	switch (isp_dev->index) {
 	case 0:
 	case 1:
 		fmt->width = 1920;
@@ -556,8 +551,7 @@ static int isp_hw_cfg_timgen(struct isp_dev_t *isp_dev)
 	int rtn = -EINVAL;
 	struct aml_format timgen;
 
-	switch (isp_dev->index)
-	{
+	switch (isp_dev->index) {
 	case 0:
 	case 1:
 		timgen.width = 2592 + 1726;
@@ -579,8 +573,7 @@ static int isp_hw_cfg_timgen(struct isp_dev_t *isp_dev)
 
 static int isp_stream_set_fmt(struct aml_video *video, struct aml_format *fmt)
 {
-	switch (video->id)
-	{
+	switch (video->id) {
 	case AML_ISP_STREAM_DDR:
 		isp_rdmif0_cfg_frm_size(video->priv, fmt);
 		break;
@@ -603,8 +596,7 @@ static int isp_stream_set_fmt(struct aml_video *video, struct aml_format *fmt)
 
 static int isp_stream_cfg_buf(struct aml_video *video, struct aml_buffer *buff)
 {
-	switch (video->id)
-	{
+	switch (video->id) {
 	case AML_ISP_STREAM_DDR:
 		isp_rdmif0_cfg_frm_buff(video->priv, buff);
 		break;
@@ -627,8 +619,7 @@ static int isp_stream_bilateral_cfg(struct aml_video *video, struct aml_buffer *
 {
 	int rtn = 0;
 
-	switch (video->id)
-	{
+	switch (video->id) {
 	case AML_ISP_STREAM_PARAM:
 		isp_fed_cfg_param(video->priv, buff);
 		isp_lens_cfg_param(video->priv, buff);
@@ -678,8 +669,7 @@ static int isp_stream_bilateral_cfg(struct aml_video *video, struct aml_buffer *
 
 static void isp_hw_stream_crop(struct aml_video *video)
 {
-	switch (video->id)
-	{
+	switch (video->id) {
 	case AML_ISP_STREAM_0:
 	case AML_ISP_STREAM_1:
 	case AML_ISP_STREAM_2:
@@ -694,8 +684,7 @@ static void isp_hw_stream_on(struct aml_video *video)
 {
 	struct isp_dev_t *isp_dev = video->priv;
 
-	switch (video->id)
-	{
+	switch (video->id) {
 	case AML_ISP_STREAM_DDR:
 		isp_rdmif0_module_enable(video->priv, 1);
 		isp_hw_cfg_timgen(isp_dev);
@@ -728,8 +717,7 @@ static void isp_hw_stream_off(struct aml_video *video)
 {
 	struct isp_dev_t *isp_dev = video->priv;
 
-	switch (video->id)
-	{
+	switch (video->id) {
 	case AML_ISP_STREAM_DDR:
 		isp_rdmif0_module_enable(video->priv, 0);
 		isp_timgen_disable(isp_dev);
@@ -819,27 +807,26 @@ static int isp_hw_enable_mcnr_mif(struct isp_dev_t *isp_dev, int enable)
 static int isp_hw_enable_rot(struct aml_video *video, int enable)
 {
 
-	switch (video->rot_type)
-	{
-	case AML_MIRROR_NONE:
-		isp_wrmifx3_mirror_enable(video->priv, video->id - 3, 0);
-		isp_wrmifx3_flip_enable(video->priv, video->id - 3, 0);
-		break;
-	case AML_MIRROR_HORIZONTAL:
-		isp_wrmifx3_mirror_enable(video->priv, video->id - 3, enable);
-		isp_wrmifx3_flip_enable(video->priv, video->id - 3, 0);
-		break;
-	case AML_MIRROR_VERTICAL:
-		isp_wrmifx3_mirror_enable(video->priv, video->id - 3, 0);
-		isp_wrmifx3_flip_enable(video->priv, video->id - 3, enable);
-		break;
-	case AML_MIRROR_BOTH:
-		isp_wrmifx3_mirror_enable(video->priv, video->id - 3, enable);
-		isp_wrmifx3_flip_enable(video->priv, video->id - 3, enable);
-		break;
-	default:
-		pr_err("Failed to support rot type %d\n", video->rot_type);
-		return -1;
+	switch (video->rot_type) {
+		case AML_MIRROR_NONE:
+			isp_wrmifx3_mirror_enable(video->priv, video->id - 3, 0);
+			isp_wrmifx3_flip_enable(video->priv, video->id - 3, 0);
+			break;
+		case AML_MIRROR_HORIZONTAL:
+			isp_wrmifx3_mirror_enable(video->priv, video->id - 3, enable);
+			isp_wrmifx3_flip_enable(video->priv, video->id - 3, 0);
+			break;
+		case AML_MIRROR_VERTICAL:
+			isp_wrmifx3_mirror_enable(video->priv, video->id - 3, 0);
+			isp_wrmifx3_flip_enable(video->priv, video->id - 3, enable);
+			break;
+		case AML_MIRROR_BOTH:
+			isp_wrmifx3_mirror_enable(video->priv, video->id - 3, enable);
+			isp_wrmifx3_flip_enable(video->priv, video->id - 3, enable);
+			break;
+		default:
+			pr_err("Failed to support rot type %d\n", video->rot_type);
+			return -1;
 	}
 
 	return 0;
@@ -900,6 +887,58 @@ static int isp_hw_auto_trigger_apb_dma(struct isp_dev_t *isp_dev)
 	return 0;
 }
 
+static u32 *isp_hw_status(struct isp_dev_t *isp_dev)
+{
+	static u32 ISP_debuginfo[38] = {0};
+
+	isp_reg_read_bits(isp_dev, ISP_TOP_INPUT_SIZE, &ISP_debuginfo[0], 0, 16);
+	isp_reg_read_bits(isp_dev, ISP_TOP_INPUT_SIZE, &ISP_debuginfo[1], 16, 16);
+
+	isp_reg_read_bits(isp_dev, ISP_WRMIFX3_0_FMT_SIZE, &ISP_debuginfo[2], 0, 16);
+	isp_reg_read_bits(isp_dev, ISP_WRMIFX3_0_FMT_SIZE, &ISP_debuginfo[3], 16, 16);
+	isp_reg_read_bits(isp_dev, ISP_WRMIFX3_1_FMT_SIZE, &ISP_debuginfo[4], 0, 16);
+	isp_reg_read_bits(isp_dev, ISP_WRMIFX3_1_FMT_SIZE, &ISP_debuginfo[5], 16, 16);
+	isp_reg_read_bits(isp_dev, ISP_WRMIFX3_2_FMT_SIZE, &ISP_debuginfo[6], 0, 16);
+	isp_reg_read_bits(isp_dev, ISP_WRMIFX3_2_FMT_SIZE, &ISP_debuginfo[7], 16, 16);
+	isp_reg_read_bits(isp_dev, ISP_WRMIFX3_3_FMT_SIZE, &ISP_debuginfo[8], 0, 16);
+	isp_reg_read_bits(isp_dev, ISP_WRMIFX3_3_FMT_SIZE, &ISP_debuginfo[9], 16, 16);
+
+	isp_reg_read_bits(isp_dev, ISP_TOP_PATH_EN, &ISP_debuginfo[10], 8, 5);
+
+	isp_reg_read_bits(isp_dev, DISP0_TOP_CRP2_SIZE, &ISP_debuginfo[11], 0, 16);
+	isp_reg_read_bits(isp_dev, DISP0_TOP_CRP2_SIZE, &ISP_debuginfo[12], 16, 16);
+	isp_reg_read_bits(isp_dev, DISP1_TOP_CRP2_SIZE, &ISP_debuginfo[13], 0, 16);
+	isp_reg_read_bits(isp_dev, DISP1_TOP_CRP2_SIZE, &ISP_debuginfo[14], 16, 16);
+	isp_reg_read_bits(isp_dev, DISP2_TOP_CRP2_SIZE, &ISP_debuginfo[15], 0, 16);
+	isp_reg_read_bits(isp_dev, DISP2_TOP_CRP2_SIZE, &ISP_debuginfo[16], 16, 16);
+
+	isp_reg_read_bits(isp_dev, ISP_AF_HV_SIZE, &ISP_debuginfo[17], 0, 16);
+	isp_reg_read_bits(isp_dev, ISP_AF_HV_SIZE, &ISP_debuginfo[18], 16, 16);
+	isp_reg_read_bits(isp_dev, ISP_AE_HV_SIZE, &ISP_debuginfo[19], 0, 16);
+	isp_reg_read_bits(isp_dev, ISP_AE_HV_SIZE, &ISP_debuginfo[20], 16, 16);
+	isp_reg_read_bits(isp_dev, ISP_AWB_HV_SIZE, &ISP_debuginfo[21], 0, 16);
+	isp_reg_read_bits(isp_dev, ISP_AWB_HV_SIZE, &ISP_debuginfo[22], 16, 16);
+
+	isp_reg_read_bits(isp_dev, VIU_DMAWR_SIZE0, &ISP_debuginfo[23], 0, 16);
+	isp_reg_read_bits(isp_dev, VIU_DMAWR_SIZE0, &ISP_debuginfo[24], 16, 16);
+	isp_reg_read_bits(isp_dev, VIU_DMAWR_SIZE1, &ISP_debuginfo[25], 0, 16);
+	isp_reg_read_bits(isp_dev, VIU_DMAWR_SIZE1, &ISP_debuginfo[26], 16, 16);
+	isp_reg_read_bits(isp_dev, VIU_DMAWR_SIZE2, &ISP_debuginfo[27], 0, 16);
+
+	isp_reg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_0, &ISP_debuginfo[28], 0, 32);
+	isp_reg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_1, &ISP_debuginfo[29], 0, 32);
+	isp_reg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_2, &ISP_debuginfo[30], 0, 32);
+	isp_reg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_3, &ISP_debuginfo[31], 0, 32);
+	isp_reg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_4, &ISP_debuginfo[32], 0, 32);
+	isp_reg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_5, &ISP_debuginfo[33], 0, 32);
+	isp_reg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_6, &ISP_debuginfo[34], 0, 32);
+	isp_reg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_7, &ISP_debuginfo[35], 0, 32);
+	isp_reg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_8, &ISP_debuginfo[36], 0, 32);
+	isp_reg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_9, &ISP_debuginfo[37], 0, 32);
+
+	return ISP_debuginfo;
+}
+
 const struct isp_dev_ops isp_hw_ops = {
 	.hw_init = isp_hw_init,
 	.hw_reset = isp_hw_reset,
@@ -932,5 +971,6 @@ const struct isp_dev_ops isp_hw_ops = {
 	.hw_auto_trigger_apb_dma = isp_hw_auto_trigger_apb_dma,
 	.hw_fill_rreg_buff = isp_hw_fill_rreg_buff,
 	.hw_fill_gisp_rreg_buff = isp_hw_fill_gisp_rreg_buff,
+	.hw_status = isp_hw_status,
 };
 EXPORT_SYMBOL(isp_hw_ops);

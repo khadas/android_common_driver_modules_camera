@@ -303,7 +303,7 @@ void isp_top_init(struct isp_dev_t *isp_dev)
 		(1 << 12) | (1 << 13) | (1 << 14) | (0 << 15) | (1 << 16) | (1 << 17);
 	isp_reg_write(isp_dev, ISP_TOP_FED_CTRL, val);
 
-	val = (1 << 1) | (0 << 2) | (1 << 3) | (0 << 4) | (0 << 5) |
+	val = (1 << 1) | (0 << 2) | (1 << 3) | (0 << 4) | (1 << 5) |
 		(1 << 6) | (1 << 7) |(1 << 8) | (1 << 9);
 	isp_reg_write(isp_dev, ISP_TOP_BEO_CTRL, val);
 

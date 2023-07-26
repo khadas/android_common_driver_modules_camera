@@ -661,6 +661,14 @@ static void awb_cfg_stat_blk_weight(struct isp_dev_t *isp_dev, void *mode)
 	isp_hw_lut_wend(isp_dev);
 }
 
+static void awb_stat_local_mode(struct isp_dev_t *isp_dev, void *base)
+{
+	aisp_base_cfg_t *base_cfg = base;
+	aisp_setting_fixed_cfg_t *fixed_cfg = &base_cfg->fxset_cfg;
+
+	isp_reg_update_bits(isp_dev, ISP_AWB_STAT_CTRL2, fixed_cfg->wb_stats_local_mode, 2, 1);
+}
+
 static void awb_req_info(struct isp_dev_t *isp_dev, void *info)
 {
 	u32 val = 0;
@@ -836,8 +844,8 @@ void isp_3a_flkr_cfg_param(struct isp_dev_t *isp_dev, struct aml_buffer *buff)
 	if (param->pvalid.aisp_expo_mode)
 		ae_cfg_stat_blk_weight(isp_dev, &param->expo_mode);
 
-	//if (param->pvalid.aisp_base)
-		//ae_cfg_stat_blk_weight(isp_dev, param->base_cfg.fxlut_cfg.ae_stat_blk_weight);
+	if (param->pvalid.aisp_base)
+		awb_stat_local_mode(isp_dev, &param->base_cfg);
 
 	if (param->pvalid.aisp_base)
 		awb_cfg_stat_blk_weight(isp_dev, param->base_cfg.fxlut_cfg.awb_stat_blk_weight);

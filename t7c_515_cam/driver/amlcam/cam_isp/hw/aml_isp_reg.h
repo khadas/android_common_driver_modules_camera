@@ -50,6 +50,10 @@
 #define ISP_DMA_SRC0_PONG_DST_ADDR1          ((0x3b << 2) + APB_DMA_BASE)
 #define ISP_DMA_SRC0_PONG_TASK1              ((0x3c << 2) + APB_DMA_BASE)
 
+#define ISP_DMA_SRC1_CTL                     ((0x3d << 2) + APB_DMA_BASE)
+#define ISP_DMA_SRC1_PING_CMD_ADDR0          ((0x3e << 2) + APB_DMA_BASE)
+#define ISP_DMA_SRC1_PING_TASK0	             ((0x40 << 2) + APB_DMA_BASE)
+
 #define MIPI_TOP_CTRL0                       ((0xc0 << 2) + TOP_BASE)
 #define MIPI_TOP_CTRL1                       ((0xbf << 2) + TOP_BASE)
 #define MIPI_TOP_CTRL2                       ((0xbe << 2) + TOP_BASE)
