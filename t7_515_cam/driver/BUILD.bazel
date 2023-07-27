@@ -1,0 +1,21 @@
+load("//build/kernel/kleaf:kernel.bzl", "kernel_module")
+
+kernel_module(
+    name = "camera",
+    srcs = glob(
+        ["**"],
+        exclude = [
+            "BUILD.bazel",
+        ],
+    ),
+    outs = [
+        "v4l2_dev/iv009_isp.ko",
+        "subdev/iq/iv009_isp_iq.ko",
+        "subdev/lens/iv009_isp_lens.ko",
+        "subdev/sensor/iv009_isp_sensor.ko",
+    ],
+    kernel_build = "//common:amlogic",
+    visibility = [
+        "//common:__pkg__",
+    ],
+)
