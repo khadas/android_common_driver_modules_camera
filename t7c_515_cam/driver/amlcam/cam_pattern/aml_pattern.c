@@ -98,7 +98,7 @@ int aml_pattern_subdev_register(struct pattern_dev_t *pattern)
 	if (rtn)
 		goto error_rtn;
 
-	pr_info("PATTTERN%u: register subdev\n", pattern->index);
+	pr_info("PATTERN%u: register subdev\n", pattern->index);
 
 error_rtn:
 	return rtn;
