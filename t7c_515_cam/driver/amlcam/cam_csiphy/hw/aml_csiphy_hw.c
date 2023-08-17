@@ -17,6 +17,8 @@
  *
  */
 
+#define pr_fmt(fmt) "aml-csiphy:%s:%d: " fmt, __func__, __LINE__
+
 #include <linux/io.h>
 #include "../aml_csiphy.h"
 #include "aml_csiphy_hw.h"

@@ -10,13 +10,7 @@ kernel_module(
     ),
     outs = [
         "amlcam/amlcam.ko",
-        "sensor/dw9714/dw9714.ko",
-        "sensor/imx290/imx290.ko",
-        "sensor/imx415/imx415.ko",
-        "sensor/ov08a10/ov08a10.ko",
-        "sensor/ov13b10/ov13b10.ko",
-        "sensor/ov5640/ov5640.ko",
-        "sensor/ov9285/ov9285.ko",
+        "amlsens/amlsens.ko",
     ],
     kernel_build = "//common:amlogic",
     visibility = [

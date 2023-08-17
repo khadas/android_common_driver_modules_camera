@@ -17,6 +17,8 @@
 *
 */
 
+#define pr_fmt(fmt)  "aml-adap:%s:%d: " fmt, __func__, __LINE__
+
 #include <linux/io.h>
 #include <linux/delay.h>
 #include <asm/types.h>

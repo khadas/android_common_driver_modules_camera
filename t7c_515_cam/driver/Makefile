@@ -8,7 +8,7 @@ endif
 include $(out_dir)/include/config/auto.conf
 
 obj-y += amlcam/
-obj-y += sensor/
+obj-y += amlsens/
 
 modules:
 	@$(MAKE) -C $(KERNEL_SRC) M=$(M)  modules

@@ -269,6 +269,7 @@ void aml_adap_subdev_unregister(struct adapter_dev_t *adap_dev);
 extern const struct adapter_dev_ops adap_dev_hw_ops;
 
 struct adapter_dev_t *adap_get_dev(int index);
+int write_data_to_buf(char *buf, int size);
 
 struct adapter_global_info *aml_adap_global_get_info(void);
 int aml_adap_global_init(void);

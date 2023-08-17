@@ -17,6 +17,8 @@
 *
 */
 
+#define pr_fmt(fmt)  "aml-pattern:%s:%d: " fmt, __func__, __LINE__
+
 #include <linux/io.h>
 
 #include "aml_cam.h"

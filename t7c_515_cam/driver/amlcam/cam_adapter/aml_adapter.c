@@ -17,6 +17,7 @@
 *
 */
 
+#define pr_fmt(fmt)  "aml-adap:%s:%d: " fmt, __func__, __LINE__
 #include <linux/version.h>
 #include <linux/clk.h>
 #include <linux/io.h>
@@ -56,6 +57,8 @@ static const struct aml_format adap_support_formats[] = {
 	{0, 0, 0, 0, MEDIA_BUS_FMT_YUYV8_2X8, 0, 1, 8},
 	{0, 0, 0, 0, MEDIA_BUS_FMT_YVYU8_2X8, 0, 1, 8},
 };
+
+
 
 struct adapter_dev_t *adap_get_dev(int index)
 {
@@ -250,7 +253,7 @@ static void adap_free_raw_buffs(struct adapter_dev_t *a_dev)
 
 	aml_subdev_unmap_vaddr(a_dev->param.ddr_buf[0].vaddr[AML_PLANE_A]);
 
-	if ((param->ddr_buf[0].addr[AML_PLANE_A] != 0) && (param->ddr_buf[0].vaddr[AML_PLANE_A] != NULL)) {
+	if ((param->ddr_buf[0].addr != 0) && (param->ddr_buf[0].vaddr != NULL)) {
 		for (i = 0; i < fcnt; i++) {
 			param->ddr_buf[i].addr[AML_PLANE_A] = 0;
 			param->ddr_buf[i].vaddr[AML_PLANE_A] = NULL;
@@ -278,8 +281,8 @@ int adap_wdr_cfg_buf(struct adapter_dev_t *a_dev)
 int adap_fe_cfg_buf(struct adapter_dev_t *a_dev)
 {
 	unsigned long flags;
+	struct aml_video video;
 	struct adapter_dev_param *param = &a_dev->param;
-	struct aml_video *video = &a_dev->video[0];
 
 	if (a_dev->wstatus != STATUS_START)
 		return -1;
@@ -295,9 +298,9 @@ int adap_fe_cfg_buf(struct adapter_dev_t *a_dev)
 	if (param->cur_buf) {
 		list_del(&param->cur_buf->list);
 	} else {
-		video->id = MODE_MIPI_RAW_SDR_DDR;
-		video->priv = a_dev;
-		a_dev->ops->hw_fe_cfg_buf(video, &param->rsvd_buf);
+		video.id = MODE_MIPI_RAW_SDR_DDR;
+		video.priv = a_dev;
+		a_dev->ops->hw_fe_cfg_buf(&video, &param->rsvd_buf);
 
 		spin_unlock_irqrestore(&param->ddr_lock, flags);
 
@@ -306,10 +309,10 @@ int adap_fe_cfg_buf(struct adapter_dev_t *a_dev)
 		return -1;
 	}
 
-	video->id = MODE_MIPI_RAW_SDR_DDR;
-	video->priv = a_dev;
+	video.id = MODE_MIPI_RAW_SDR_DDR;
+	video.priv = a_dev;
 
-	a_dev->ops->hw_fe_cfg_buf(video, param->cur_buf);
+	a_dev->ops->hw_fe_cfg_buf(&video, param->cur_buf);
 
 	spin_unlock_irqrestore(&param->ddr_lock, flags);
 

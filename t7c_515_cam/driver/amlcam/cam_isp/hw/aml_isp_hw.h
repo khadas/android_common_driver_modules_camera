@@ -20,6 +20,8 @@
 #ifndef __AML_ISP_HW_H__
 #define __AML_ISP_HW_H__
 
+#define pr_fmt(fmt)  "isp_hw:%s:%d: " fmt, __func__, __LINE__
+
 #include <linux/io.h>
 #include <linux/kernel.h>
 
@@ -66,6 +68,7 @@ void isp_reg_write(struct isp_dev_t *isp_dev, u32 addr, u32 val);
 int isp_reg_update_bits(struct isp_dev_t *isp_dev, u32 addr, u32 val, u32 start, u32 len);
 int isp_hwreg_update_bits(struct isp_dev_t *isp_dev, u32 addr, u32 val, u32 start, u32 len);
 
+int isp_hwreg_read_bits(struct isp_dev_t *isp_dev, u32 addr, u32 *val, u32 start, u32 len);
 int isp_reg_read_bits(struct isp_dev_t *isp_dev, u32 addr, u32 *val, u32 start, u32 len);
 u32 isp_hw_float_convert(u32 data);
 int isp_hw_convert_fmt(struct aml_format *fmt);

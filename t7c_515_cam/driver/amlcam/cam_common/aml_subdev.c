@@ -17,6 +17,7 @@
 *
 */
 
+#define pr_fmt(fmt)  "aml-subdev:%s:%d: " fmt, __func__, __LINE__
 #include <linux/version.h>
 #include <linux/io.h>
 #include <media/v4l2-common.h>

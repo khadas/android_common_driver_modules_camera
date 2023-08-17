@@ -168,6 +168,29 @@ int isp_hwreg_update_bits(struct isp_dev_t *isp_dev, u32 addr, u32 val, u32 star
 	return 0;
 }
 
+int isp_hwreg_read_bits(struct isp_dev_t *isp_dev, u32 addr, u32 *val, u32 start, u32 len)
+{
+	int rtn = -1;
+	u32 mask = 0;
+	u32 orig = 0;
+
+	if (start + len > 32 || !val) {
+		dump_stack();
+		pr_err("ISP: Error input start and len\n");
+		return rtn;
+	} else if (start == 0 && len == 32) {
+		*val = isp_hwreg_read(isp_dev, addr);
+		return 0;
+	}
+
+	mask = (1 << len) - 1;
+	orig = isp_hwreg_read(isp_dev, addr);
+
+	*val = (orig >> start) & mask;
+
+	return 0;
+}
+
 int isp_reg_read_bits(struct isp_dev_t *isp_dev, u32 addr, u32 *val, u32 start, u32 len)
 {
 	int rtn = -1;
@@ -716,6 +739,7 @@ static void isp_hw_stream_on(struct aml_video *video)
 static void isp_hw_stream_off(struct aml_video *video)
 {
 	struct isp_dev_t *isp_dev = video->priv;
+	struct isp_global_info *g_info = isp_global_get_info();
 
 	switch (video->id) {
 	case AML_ISP_STREAM_DDR:
@@ -731,7 +755,10 @@ static void isp_hw_stream_off(struct aml_video *video)
 	case AML_ISP_STREAM_3:
 		isp_disp_disable(video->priv, video->id - 3);
 	case AML_ISP_STREAM_RAW:
-		isp_wrmifx3_module_enable(video->priv, video->id - 3, 0, 0);
+		if (g_info->mode == AML_ISP_SCAM)
+			isp_wrmifx3_module_enable(video->priv, video->id - 3, 0, 1);
+		else
+			isp_wrmifx3_module_enable(video->priv, video->id - 3, 0, 0);
 		break;
 	}
 
@@ -889,7 +916,7 @@ static int isp_hw_auto_trigger_apb_dma(struct isp_dev_t *isp_dev)
 
 static u32 *isp_hw_status(struct isp_dev_t *isp_dev)
 {
-	static u32 ISP_debuginfo[38] = {0};
+	static u32 ISP_debuginfo[40] = {0};
 
 	isp_reg_read_bits(isp_dev, ISP_TOP_INPUT_SIZE, &ISP_debuginfo[0], 0, 16);
 	isp_reg_read_bits(isp_dev, ISP_TOP_INPUT_SIZE, &ISP_debuginfo[1], 16, 16);
@@ -911,30 +938,32 @@ static u32 *isp_hw_status(struct isp_dev_t *isp_dev)
 	isp_reg_read_bits(isp_dev, DISP1_TOP_CRP2_SIZE, &ISP_debuginfo[14], 16, 16);
 	isp_reg_read_bits(isp_dev, DISP2_TOP_CRP2_SIZE, &ISP_debuginfo[15], 0, 16);
 	isp_reg_read_bits(isp_dev, DISP2_TOP_CRP2_SIZE, &ISP_debuginfo[16], 16, 16);
+	isp_reg_read_bits(isp_dev, DISP3_TOP_CRP2_SIZE, &ISP_debuginfo[17], 0, 16);
+	isp_reg_read_bits(isp_dev, DISP3_TOP_CRP2_SIZE, &ISP_debuginfo[18], 16, 16);
 
-	isp_reg_read_bits(isp_dev, ISP_AF_HV_SIZE, &ISP_debuginfo[17], 0, 16);
-	isp_reg_read_bits(isp_dev, ISP_AF_HV_SIZE, &ISP_debuginfo[18], 16, 16);
-	isp_reg_read_bits(isp_dev, ISP_AE_HV_SIZE, &ISP_debuginfo[19], 0, 16);
-	isp_reg_read_bits(isp_dev, ISP_AE_HV_SIZE, &ISP_debuginfo[20], 16, 16);
-	isp_reg_read_bits(isp_dev, ISP_AWB_HV_SIZE, &ISP_debuginfo[21], 0, 16);
-	isp_reg_read_bits(isp_dev, ISP_AWB_HV_SIZE, &ISP_debuginfo[22], 16, 16);
+	isp_reg_read_bits(isp_dev, ISP_AF_HV_SIZE, &ISP_debuginfo[19], 0, 16);
+	isp_reg_read_bits(isp_dev, ISP_AF_HV_SIZE, &ISP_debuginfo[20], 16, 16);
+	isp_reg_read_bits(isp_dev, ISP_AE_HV_SIZE, &ISP_debuginfo[21], 0, 16);
+	isp_reg_read_bits(isp_dev, ISP_AE_HV_SIZE, &ISP_debuginfo[22], 16, 16);
+	isp_reg_read_bits(isp_dev, ISP_AWB_HV_SIZE, &ISP_debuginfo[23], 0, 16);
+	isp_reg_read_bits(isp_dev, ISP_AWB_HV_SIZE, &ISP_debuginfo[24], 16, 16);
 
-	isp_reg_read_bits(isp_dev, VIU_DMAWR_SIZE0, &ISP_debuginfo[23], 0, 16);
-	isp_reg_read_bits(isp_dev, VIU_DMAWR_SIZE0, &ISP_debuginfo[24], 16, 16);
-	isp_reg_read_bits(isp_dev, VIU_DMAWR_SIZE1, &ISP_debuginfo[25], 0, 16);
-	isp_reg_read_bits(isp_dev, VIU_DMAWR_SIZE1, &ISP_debuginfo[26], 16, 16);
-	isp_reg_read_bits(isp_dev, VIU_DMAWR_SIZE2, &ISP_debuginfo[27], 0, 16);
+	isp_reg_read_bits(isp_dev, VIU_DMAWR_SIZE0, &ISP_debuginfo[25], 0, 16);
+	isp_reg_read_bits(isp_dev, VIU_DMAWR_SIZE0, &ISP_debuginfo[26], 16, 16);
+	isp_reg_read_bits(isp_dev, VIU_DMAWR_SIZE1, &ISP_debuginfo[27], 0, 16);
+	isp_reg_read_bits(isp_dev, VIU_DMAWR_SIZE1, &ISP_debuginfo[28], 16, 16);
+	isp_reg_read_bits(isp_dev, VIU_DMAWR_SIZE2, &ISP_debuginfo[29], 0, 16);
 
-	isp_reg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_0, &ISP_debuginfo[28], 0, 32);
-	isp_reg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_1, &ISP_debuginfo[29], 0, 32);
-	isp_reg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_2, &ISP_debuginfo[30], 0, 32);
-	isp_reg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_3, &ISP_debuginfo[31], 0, 32);
-	isp_reg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_4, &ISP_debuginfo[32], 0, 32);
-	isp_reg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_5, &ISP_debuginfo[33], 0, 32);
-	isp_reg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_6, &ISP_debuginfo[34], 0, 32);
-	isp_reg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_7, &ISP_debuginfo[35], 0, 32);
-	isp_reg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_8, &ISP_debuginfo[36], 0, 32);
-	isp_reg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_9, &ISP_debuginfo[37], 0, 32);
+	isp_hwreg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_0, &ISP_debuginfo[30], 0, 32);
+	isp_hwreg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_1, &ISP_debuginfo[31], 0, 32);
+	isp_hwreg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_2, &ISP_debuginfo[32], 0, 32);
+	isp_hwreg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_3, &ISP_debuginfo[33], 0, 32);
+	isp_hwreg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_4, &ISP_debuginfo[34], 0, 32);
+	isp_hwreg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_5, &ISP_debuginfo[35], 0, 32);
+	isp_hwreg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_6, &ISP_debuginfo[36], 0, 32);
+	isp_hwreg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_7, &ISP_debuginfo[37], 0, 32);
+	isp_hwreg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_8, &ISP_debuginfo[38], 0, 32);
+	isp_hwreg_read_bits(isp_dev, ISP_CHECKSUM_RO_DAT_9, &ISP_debuginfo[39], 0, 32);
 
 	return ISP_debuginfo;
 }

@@ -593,6 +593,9 @@ void isp_disp_set_csc2_fmt(struct isp_dev_t *isp_dev, u32 idx, struct aml_format
 #ifndef T7C_CHIP
 	if (idx != 0)
 		return;
+#else
+	if (idx >= DISP_CNT)
+		return;
 #endif
 
 	isp_reg_update_bits(isp_dev, DISP0_TOP_TOP_CTRL + (idx * 0x100), 0, 1, 1);
@@ -677,14 +680,21 @@ void isp_disp_disable(struct isp_dev_t *isp_dev, u32 idx)
 	isp_reg_update_bits(isp_dev, addr, 0x0, 3, 1);
 	isp_reg_update_bits(isp_dev, addr, 0x0, 2, 1);
 
+	if (g_info->mode == AML_ISP_SCAM) {
+		isp_hwreg_update_bits(isp_dev, addr, 0x0, 5, 1);
+		isp_hwreg_update_bits(isp_dev, addr, 0x0, 3, 1);
+		isp_hwreg_update_bits(isp_dev, addr, 0x0, 2, 1);
+	}
+
 	isp_reg_update_bits(isp_dev, ISP_TOP_DISPIN_SEL, 0xf, idx * 4, 4);
 
 	addr = DISP0_PPS_SCALE_EN + ((idx * 0x100) << 2);
 	isp_reg_update_bits(isp_dev, addr, 0, 20, 4);
+	if (g_info->mode == AML_ISP_SCAM)
+		isp_hwreg_update_bits(isp_dev, addr, 0, 20, 4);
 
 	addr = ISP_TOP_PATH_EN;
 	isp_reg_update_bits(isp_dev, addr, 0x0, idx, 1);
-
 	if (g_info->mode == AML_ISP_SCAM)
 		isp_hwreg_update_bits(isp_dev, addr, 0x0, idx, 1);
 }
@@ -988,6 +998,14 @@ void isp_disp_pps_config(struct isp_dev_t *isp_dev, u32 idx,
 			isp_reg_write(isp_dev, addr, val);
 			isp_reg_write(isp_dev, addr, 0);
 		}
+
+		addr = DISP0_PPS_PRE_HSCALE_COEF_1 + ((idx * 0x100) << 2);
+		val = (0 << 16) | 0;
+		isp_reg_write(isp_dev, addr, val);
+
+		addr = DISP0_PPS_PRE_HSCALE_COEF_0 + ((idx * 0x100) << 2);
+		val = (0 << 16) | 256;
+		isp_reg_write(isp_dev, addr, val);
 	} else if (reg_hsc_tap_num == 4) {
 
 		addr = ISP_SCALE0_COEF_IDX_LUMA + ((idx * 0x100) << 2);
@@ -1015,7 +1033,13 @@ void isp_disp_pps_config(struct isp_dev_t *isp_dev, u32 idx,
 			val = ((pps_lut_tap4[i][2] << 16) & 0x7ff0000) | ((pps_lut_tap4[i][3] & 0x7ff) << 0);
 			isp_reg_write(isp_dev, addr, val);
 		}
+		addr = DISP0_PPS_PRE_HSCALE_COEF_1 + ((idx * 0x100) << 2);
+		val = (0 << 16) | 0;
+		isp_reg_write(isp_dev, addr, val);
 
+		addr = DISP0_PPS_PRE_HSCALE_COEF_0 + ((idx * 0x100) << 2);
+		val = (128 << 16) | 128;
+		isp_reg_write(isp_dev, addr, val);
 	} else {
 
 		addr = ISP_SCALE0_COEF_IDX_LUMA + ((idx * 0x100) << 2);
@@ -1069,15 +1093,15 @@ void isp_disp_pps_config(struct isp_dev_t *isp_dev, u32 idx,
 			val = ((pps_lut_tap8[i][6] << 16) & 0x7ff0000) | ((pps_lut_tap8[i][7] & 0x7ff) << 0);
 			isp_reg_write(isp_dev, addr, val);
 		}
+
+		addr = DISP0_PPS_PRE_HSCALE_COEF_1 + ((idx * 0x100) << 2);
+		val = (32 << 16) | 32;
+		isp_reg_write(isp_dev, addr, val);
+
+		addr = DISP0_PPS_PRE_HSCALE_COEF_0 + ((idx * 0x100) << 2);
+		val = (32 << 16) | 32;
+		isp_reg_write(isp_dev, addr, val);
 	}
-
-	addr = DISP0_PPS_PRE_HSCALE_COEF_1 + ((idx * 0x100) << 2);
-	val = (32 << 16) | 32;
-	isp_reg_write(isp_dev, addr, val);
-
-	addr = DISP0_PPS_PRE_HSCALE_COEF_0 + ((idx * 0x100) << 2);
-	val = (128 << 16) | 128;
-	isp_reg_write(isp_dev, addr, val);
 }
 
 void isp_disp_set_overlap(struct isp_dev_t *isp_dev, int ovlp)

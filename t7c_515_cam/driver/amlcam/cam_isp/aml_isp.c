@@ -522,7 +522,6 @@ int isp_subdev_ctrls_init(struct isp_dev_t *isp_dev)
 
 }
 
-//#define  IRQ_TIME_DEBUG
 static irqreturn_t isp_subdev_irq_handler(int irq, void *dev)
 {
 	int status = 0, id = 0;
@@ -811,25 +810,26 @@ static int isp_proc_show(struct seq_file *proc_entry, void *arg ) {
 	seq_printf(proc_entry, "%15s" "%15s \n", "crp2 vsize", "crp2 hsize");
 	seq_printf(proc_entry, "%4s" "%11d" "%15d \n", "pps0", *(isp_info + 11), *(isp_info + 12) );
 	seq_printf(proc_entry, "%4s" "%11d" "%15d \n", "pps1", *(isp_info + 13), *(isp_info + 14) );
-	seq_printf(proc_entry, "%4s" "%11d" "%15d \n\n", "pps2", *(isp_info + 15), *(isp_info + 16) );
+	seq_printf(proc_entry, "%4s" "%11d" "%15d \n", "pps2", *(isp_info + 15), *(isp_info + 16) );
+	seq_printf(proc_entry, "%4s" "%11d" "%15d \n\n", "pps3", *(isp_info + 17), *(isp_info + 18) );
 
 	seq_printf(proc_entry, " ------- 3a solution ------- \n");
 	seq_printf(proc_entry, "%18s" "%18s \n", "af stat vsize", "af stat hsize");
-	seq_printf(proc_entry, "%18d" "%18d \n", *(isp_info + 17), *(isp_info + 18) );
-	seq_printf(proc_entry, "%18s" "%18s \n", "ae stat vsize", "ae stat hsize");
 	seq_printf(proc_entry, "%18d" "%18d \n", *(isp_info + 19), *(isp_info + 20) );
+	seq_printf(proc_entry, "%18s" "%18s \n", "ae stat vsize", "ae stat hsize");
+	seq_printf(proc_entry, "%18d" "%18d \n", *(isp_info + 21), *(isp_info + 22) );
 	seq_printf(proc_entry, "%18s" "%18s \n", "awb stat vsize", "awb stat hsize");
-	seq_printf(proc_entry, "%18d" "%18d \n\n", *(isp_info + 21), *(isp_info + 22) );
+	seq_printf(proc_entry, "%18d" "%18d \n\n", *(isp_info + 23), *(isp_info + 24) );
 
 	seq_printf(proc_entry, " ------- dma configuration ------- \n");
 	seq_printf(proc_entry, "%10s" "%5s" "%15s" "%15s" "%15s" "%15s \n"
 					, "chx_size0-4", "af", "awb", "ae", "flkr", "post");
 	seq_printf(proc_entry, "%16d" "%15d" "%15d" "%15d" "%15d \n\n",
-					*(isp_info + 23),
-					*(isp_info + 24),
 					*(isp_info + 25),
 					*(isp_info + 26),
-					*(isp_info + 27));
+					*(isp_info + 27),
+					*(isp_info + 28),
+					*(isp_info + 29));
 	seq_printf(proc_entry, "%15s \n", "wreg_cnt");
 	seq_printf(proc_entry, "%15d\n\n", isp_dev->wreg_cnt);
 
@@ -838,19 +838,19 @@ static int isp_proc_show(struct seq_file *proc_entry, void *arg ) {
 	seq_printf(proc_entry, "%15s" "%15s" "%15s" "%15s" "%15s \n"
 					, "ofe_din", "ofe_dout", "dfe_dout", "obe_dout", "dms_dout");
 	seq_printf(proc_entry, "%15u" "%15u" "%15u" "%15u" "%15u \n\n",
-					*(isp_info + 28),
-					*(isp_info + 29),
 					*(isp_info + 30),
 					*(isp_info + 31),
-					*(isp_info + 32));
+					*(isp_info + 32),
+					*(isp_info + 33),
+					*(isp_info + 34));
 	seq_printf(proc_entry, "%15s" "%15s" "%15s" "%15s" "%15s \n"
 					, "post_dout", "post_ir", "disp_0", "disp_1", "disp_2");
 	seq_printf(proc_entry, "%15u" "%15u" "%15u" "%15u" "%15u \n\n",
-					*(isp_info + 33),
-					*(isp_info + 34),
 					*(isp_info + 35),
 					*(isp_info + 36),
-					*(isp_info + 37));
+					*(isp_info + 37),
+					*(isp_info + 38),
+					*(isp_info + 39));
 
 	seq_printf(proc_entry, "******************* PROC END *******************\n\n");
 
