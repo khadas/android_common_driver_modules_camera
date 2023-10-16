@@ -61,6 +61,7 @@ struct lt6911c {
 	struct v4l2_ctrl *wdr;
 	struct v4l2_ctrl *fps;
 	struct v4l2_ctrl *data_lanes;
+	struct v4l2_ctrl *clock_mode;
 
 	int status;
 	struct mutex lock;

@@ -11,6 +11,9 @@
 #define FREQ_INDEX_1080P    0
 #define AML_SENSOR_NAME     "lt6911c-%u"
 
+uint hdmi = 0;
+module_param(hdmi, uint, 0664);
+MODULE_PARM_DESC(hdmi, "\n enable hdmi\n");
 static const s64 lt6911c_link_freq_2lanes[] = {
 	[FREQ_INDEX_1080P] = 672000000,
 };
@@ -38,11 +41,13 @@ static const struct lt6911c_mode lt6911c_modes_2lanes[] = {
 
 int lt6911c_power_on(struct device *dev, struct sensor_gpio *gpio)
 {
+	gpiod_set_value_cansleep(gpio->rst_gpio, 1);
 	return 0;
 }
 
 int lt6911c_power_off(struct device *dev, struct sensor_gpio *gpio)
 {
+	gpiod_set_value_cansleep(gpio->rst_gpio, 0);
 	return 0;
 }
 
@@ -87,7 +92,6 @@ int lt6911c_sbdev_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh) {
 int lt6911c_sbdev_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh) {
 	struct lt6911c *lt6911c = to_lt6911c(sd);
 	lt6911c_stop_streaming(lt6911c);
-	lt6911c_power_off(lt6911c->dev, lt6911c->gpio);
 	return 0;
 }
 
@@ -182,6 +186,18 @@ static struct v4l2_ctrl_config nlane_cfg = {
 	.max = 4,
 	.step = 1,
 	.def = 2,
+};
+
+static struct v4l2_ctrl_config csi_clock_mode = {
+	.ops = &lt6911c_ctrl_ops,
+	.id = V4L2_CID_AML_CLOCK_MODE,
+	.name = "csi clock mode",
+	.type = V4L2_CTRL_TYPE_INTEGER,
+	.flags = V4L2_CTRL_FLAG_VOLATILE | V4L2_CTRL_FLAG_EXECUTE_ON_WRITE,
+	.min = 0,
+	.max = 1,
+	.step = 1,
+	.def = 0,
 };
 
 static const struct v4l2_subdev_video_ops lt6911c_video_ops = {
@@ -424,7 +440,7 @@ static int lt6911c_set_fmt(struct v4l2_subdev *sd,
 		format = &lt6911c->current_format;
 		lt6911c->current_mode = mode;
 		lt6911c->bpp = lt6911c_formats[i].bpp;
-		lt6911c->nlanes = 2;
+		lt6911c->nlanes = 4;
 
 		if (lt6911c->link_freq)
 			__v4l2_ctrl_s_ctrl(lt6911c->link_freq, lt6911c_get_link_freq_index(lt6911c));
@@ -432,6 +448,8 @@ static int lt6911c_set_fmt(struct v4l2_subdev *sd,
 			__v4l2_ctrl_s_ctrl_int64(lt6911c->pixel_rate, lt6911c_calc_pixel_rate(lt6911c));
 		if (lt6911c->data_lanes)
 			__v4l2_ctrl_s_ctrl(lt6911c->data_lanes, lt6911c->nlanes);
+		if (lt6911c->clock_mode)
+			__v4l2_ctrl_s_ctrl(lt6911c->clock_mode, 1);
 	}
 
 	*format = fmt->format;
@@ -504,6 +522,7 @@ static int lt6911c_ctrls_init(struct lt6911c *lt6911c) {
 
 	lt6911c->wdr = v4l2_ctrl_new_custom(&lt6911c->ctrls, &wdr_cfg, NULL);
 	lt6911c->fps = v4l2_ctrl_new_custom(&lt6911c->ctrls, &v4l2_ctrl_output_fps, NULL);
+	lt6911c->clock_mode = v4l2_ctrl_new_custom(&lt6911c->ctrls, &csi_clock_mode, NULL);
 
 	lt6911c->sd.ctrl_handler = &lt6911c->ctrls;
 
@@ -631,22 +650,21 @@ int lt6911c_deinit(struct i2c_client *client)
 
 int lt6911c_sensor_id(struct i2c_client *client)
 {
-	u32 id = 0;
-	u8 val = 0;
 	int rtn = -EINVAL;
-
-	i2c_read_a16d8(client, LT6911C_SLAVE_ID, 0, &val);
-	id |= (val << 8);
-
-	i2c_read_a16d8(client, LT6911C_SLAVE_ID, 1, &val);
-	id |= val;
-
-	if (id != lt6911c_ID) {
-		dev_info(&client->dev, "Failed to get lt6911c id: 0x%x\n", id);
-		return rtn;
-	} else {
-		dev_err(&client->dev, "success get lt6911c id 0x%x", id);
+	pr_debug("%s hdmi %d \n", __func__, hdmi);
+	switch (hdmi)
+	{
+	case 1:
+		rtn = 0;
+		hdmi--;
+	break;
+	case 2:
+		rtn = 0;
+		hdmi--;
+	break;
+	default:
+		rtn = -EINVAL;
+	break;
 	}
-
-	return 0;
+	return rtn;
 }

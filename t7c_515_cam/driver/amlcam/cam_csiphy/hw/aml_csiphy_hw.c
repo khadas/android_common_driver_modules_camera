@@ -129,7 +129,6 @@ static int dphy_cfg(void *c_dev, int idx, int lanes, u32 bps)
 
 	settle = (85 + 145 + (16 * ui_val)) / 2;
 	settle = settle / 5;
-
 	// mipi_reg_write(c_dev, module, MIPI_PHY_CTRL, 0x80000000);//soft reset bit
 	// mipi_reg_write(c_dev, module, MIPI_PHY_CTRL, 0);//release soft reset bit
 	if (csiphy_dev->clock_mode) {
