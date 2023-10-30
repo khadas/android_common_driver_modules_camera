@@ -66,18 +66,18 @@ static const struct aml_format data_support_format[] = {
 };
 
 static const struct aml_format raw_support_format[] = {
-	{0, 0, 0, 0, V4L2_PIX_FMT_SBGGR8, 0, 1, 8},
-	{0, 0, 0, 0, V4L2_PIX_FMT_SBGGR10, 0, 1, 16},
-	{0, 0, 0, 0, V4L2_PIX_FMT_SBGGR12, 0, 1, 16},
-	{0, 0, 0, 0, V4L2_PIX_FMT_SGBRG8, 0, 1, 8},
-	{0, 0, 0, 0, V4L2_PIX_FMT_SGBRG10, 0, 1, 16},
-	{0, 0, 0, 0, V4L2_PIX_FMT_SGBRG12, 0, 1, 16},
-	{0, 0, 0, 0, V4L2_PIX_FMT_SRGGB8, 0, 1, 8},
-	{0, 0, 0, 0, V4L2_PIX_FMT_SRGGB10, 0, 1, 16},
-	{0, 0, 0, 0, V4L2_PIX_FMT_SRGGB12, 0, 1, 16},
-	{0, 0, 0, 0, V4L2_PIX_FMT_SGRBG8, 0, 1, 8},
-	{0, 0, 0, 0, V4L2_PIX_FMT_SGRBG10, 0, 1, 16},
-	{0, 0, 0, 0, V4L2_PIX_FMT_SGRBG12, 0, 1, 16},
+	{0, 0, 0, 0, 0, V4L2_PIX_FMT_SBGGR8, 1, 8},
+	{0, 0, 0, 0, 0, V4L2_PIX_FMT_SBGGR10, 1, 16},
+	{0, 0, 0, 0, 0, V4L2_PIX_FMT_SBGGR12, 1, 16},
+	{0, 0, 0, 0, 0, V4L2_PIX_FMT_SGBRG8, 1, 8},
+	{0, 0, 0, 0, 0, V4L2_PIX_FMT_SGBRG10, 1, 16},
+	{0, 0, 0, 0, 0, V4L2_PIX_FMT_SGBRG12, 1, 16},
+	{0, 0, 0, 0, 0, V4L2_PIX_FMT_SRGGB8, 1, 8},
+	{0, 0, 0, 0, 0, V4L2_PIX_FMT_SRGGB10, 1, 16},
+	{0, 0, 0, 0, 0, V4L2_PIX_FMT_SRGGB12, 1, 16},
+	{0, 0, 0, 0, 0, V4L2_PIX_FMT_SGRBG8, 1, 8},
+	{0, 0, 0, 0, 0, V4L2_PIX_FMT_SGRBG10, 1, 16},
+	{0, 0, 0, 0, 0, V4L2_PIX_FMT_SGRBG12, 1, 16},
 };
 
 static int isp_cap_stream_bilateral_cfg(struct aml_video *vd, struct aml_buffer *buff)

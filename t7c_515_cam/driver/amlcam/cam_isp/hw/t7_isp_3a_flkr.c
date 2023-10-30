@@ -72,16 +72,23 @@ static void flkr_cfg_size(struct isp_dev_t *isp_dev, struct aml_format *fmt)
 	val = (0 << 16) | (fmt->width & 0xffff);
 	isp_reg_write(isp_dev, ISP_DEFLICKER_STAT_XPOSITION, val);
 
-	if (fmt->height >= 1280)
+	val = MIN(((1 << 16) - 1), ((1 << 22) / fmt->width));
+	isp_reg_write(isp_dev, ISP_DEFLICKER_DIV_COEF, val);
+
+	if (fmt->height <= 1440)
+		isp_reg_update_bits(isp_dev, ISP_DEFLICKER_CNTL, 0, 2, 3);
+	else if (fmt->height > 1440 && fmt->height <= 2560)
+		isp_reg_update_bits(isp_dev, ISP_DEFLICKER_CNTL, 1, 2, 3);
+	else
+		isp_reg_update_bits(isp_dev, ISP_DEFLICKER_CNTL, 2, 2, 3);
+
+	if (fmt->height > 1280 && fmt->height <= 1440)
 		val = (((fmt->height - 1280) / 2) << 16) |
 			(((fmt->height - 1280) / 2 + 1280 - 1) & 0xffff);
 	else
 		val = (0 << 16) | ((fmt->height - 1) & 0xffff);
 
 	isp_reg_write(isp_dev, ISP_DEFLICKER_STAT_YPOSITION, val);
-
-	val = MIN(((1 << 16) - 1), ((1 << 22) / fmt->width));
-	isp_reg_write(isp_dev, ISP_DEFLICKER_DIV_COEF, val);
 }
 
 static void flkr_req_info(struct isp_dev_t *isp_dev, void *info)
@@ -661,6 +668,24 @@ static void awb_cfg_stat_blk_weight(struct isp_dev_t *isp_dev, void *mode)
 	isp_hw_lut_wend(isp_dev);
 }
 
+static void awb_cfg_roi(struct isp_dev_t *isp_dev, void *roi)
+{
+	u32 val = 0;
+	aisp_wb_roi_cfg_t *wb_roi = roi;
+
+	val = ((wb_roi->awb_xsize[0] & 0xffff) << 16) |(wb_roi->awb_xstart[0] & 0xffff);
+	isp_reg_write(isp_dev, ISP_AWB_STAT_ROI0_WIN01, val);
+
+	val = ((wb_roi->awb_ysize[0] & 0xffff) << 16) |(wb_roi->awb_ystart[0] & 0xffff);
+	isp_reg_write(isp_dev, ISP_AWB_STAT_ROI0_WIN23, val);
+
+	val = ((wb_roi->awb_xsize[1] & 0xffff) << 16) |(wb_roi->awb_xstart[1] & 0xffff);
+	isp_reg_write(isp_dev, ISP_AWB_STAT_ROI1_WIN01, val);
+
+	val = ((wb_roi->awb_ysize[1] & 0xffff) << 16) |(wb_roi->awb_ystart[1] & 0xffff);
+	isp_reg_write(isp_dev, ISP_AWB_STAT_ROI1_WIN23, val);
+}
+
 static void awb_stat_local_mode(struct isp_dev_t *isp_dev, void *base)
 {
 	aisp_base_cfg_t *base_cfg = base;
@@ -696,6 +721,9 @@ static void awb_req_info(struct isp_dev_t *isp_dev, void *info)
 	awb_info->blc_ofst[4] = val & 0xffff;
 
 	isp_reg_read_bits(isp_dev, ISP_TOP_3A_STAT_CRTL, &awb_info->awb_stat_switch, 4, 3);
+
+	awb_info->awb_stat_pack[0] = isp_hwreg_read(isp_dev, ISP_RO_AWB_ROI_STAT_PCK0_0);
+	awb_info->awb_stat_pack[1] = isp_hwreg_read(isp_dev, ISP_RO_AWB_ROI_STAT_PCK0_1);
 }
 
 void isp_3a_flkr_enable(struct isp_dev_t *isp_dev)
@@ -849,6 +877,9 @@ void isp_3a_flkr_cfg_param(struct isp_dev_t *isp_dev, struct aml_buffer *buff)
 
 	if (param->pvalid.aisp_base)
 		awb_cfg_stat_blk_weight(isp_dev, param->base_cfg.fxlut_cfg.awb_stat_blk_weight);
+
+	if (param->pvalid.aisp_wb_roi)
+		awb_cfg_roi(isp_dev, &param->wb_roi);
 }
 
 void isp_3a_flkr_init(struct isp_dev_t *isp_dev)

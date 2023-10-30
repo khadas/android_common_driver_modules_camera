@@ -71,6 +71,8 @@ enum {
 	WDR_MODE_2To1_FRAME,
 	SDR_DDR_MODE,
 	ISP_SDR_DCAM_MODE,
+	ISP_WDR_DCAM_LMODE,
+	ISP_WDR_DCAM_FMODE,
 };
 
 struct aml_format {

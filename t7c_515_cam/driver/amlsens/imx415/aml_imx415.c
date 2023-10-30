@@ -207,6 +207,8 @@ static int imx415_set_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_HBLANK:
 		break;
+	case V4L2_CID_AML_CSI_LANES:
+		break;
 	case V4L2_CID_AML_MODE:
 		imx415->enWDRMode = ctrl->val;
 		break;
@@ -376,6 +378,8 @@ static int imx415_set_fmt(struct v4l2_subdev *sd,
 			__v4l2_ctrl_s_ctrl(imx415->link_freq, imx415_get_link_freq_index(imx415) );
 		if (imx415->pixel_rate)
 			__v4l2_ctrl_s_ctrl_int64(imx415->pixel_rate, imx415_calc_pixel_rate(imx415) );
+		if (imx415->data_lanes)
+			__v4l2_ctrl_s_ctrl(imx415->data_lanes, imx415->nlanes);
 	}
 
 	*format = fmt->format;
@@ -634,11 +638,23 @@ static struct v4l2_ctrl_config fps_cfg = {
 	.def = 30,
 };
 
+static struct v4l2_ctrl_config nlane_cfg = {
+	.ops = &imx415_ctrl_ops,
+	.id = V4L2_CID_AML_CSI_LANES,
+	.name = "sensor lanes",
+	.type = V4L2_CTRL_TYPE_INTEGER,
+	.flags = V4L2_CTRL_FLAG_VOLATILE,
+	.min = 1,
+	.max = 4,
+	.step = 1,
+	.def = 4,
+};
+
 static int imx415_ctrls_init(struct imx415 *imx415)
 {
 	int rtn = 0;
 
-	v4l2_ctrl_handler_init(&imx415->ctrls, 6);
+	v4l2_ctrl_handler_init(&imx415->ctrls, 7);
 
 	v4l2_ctrl_new_std(&imx415->ctrls, &imx415_ctrl_ops,
 				V4L2_CID_GAIN, 0, 0xF0, 1, 0);
@@ -660,6 +676,10 @@ static int imx415_ctrls_init(struct imx415 *imx415)
 					       V4L2_CID_PIXEL_RATE,
 					       1, INT_MAX, 1,
 					       imx415_calc_pixel_rate(imx415));
+
+	imx415->data_lanes = v4l2_ctrl_new_custom(&imx415->ctrls, &nlane_cfg, NULL);
+	if (imx415->data_lanes)
+		imx415->data_lanes->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
 	imx415->wdr = v4l2_ctrl_new_custom(&imx415->ctrls, &wdr_cfg, NULL);
 

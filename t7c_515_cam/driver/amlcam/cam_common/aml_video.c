@@ -16,6 +16,9 @@
 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 *
 */
+#ifdef pr_fmt
+#undef pr_fmt
+#endif
 #define pr_fmt(fmt)  "[ispvideo]:%s:%d: " fmt, __func__, __LINE__
 
 #include <linux/version.h>
@@ -152,7 +155,20 @@ static int video_enum_fmt(struct file *file, void *fh, struct v4l2_fmtdesc *fmt)
 	if (fmt->type != video->type || fmt->index >= video->fmt_cnt)
 		return -EINVAL;
 
+	if (AML_ISP_STREAM_PARAM == video->id) {
+		const unsigned sz = sizeof(fmt->description);
+		strscpy(fmt->description, "AML 3A PARAM", sz);
+		return -EINVAL;
+	}
+	if (AML_ISP_STREAM_STATS == video->id)  {
+		const unsigned sz = sizeof(fmt->description);
+		strscpy(fmt->description, "AML 3A STAT", sz);
+		return -EINVAL;
+	}
+
 	fmt->pixelformat = video->format[fmt->index].fourcc;
+
+	//dev_info(video->dev, "video id %d enum fmt index %d, out fmt 0x%x\n", video->id, fmt->index, fmt->pixelformat);
 
 	return 0;
 }
@@ -338,6 +354,12 @@ static int video_buff_queue_setup(struct vb2_queue *queue,
 
 	*num_planes = 1;
 	sizes[0] = pix->sizeimage;
+
+	if (video->id == AML_ISP_STREAM_0 ||
+		video->id == AML_ISP_STREAM_1 ||
+		video->id == AML_ISP_STREAM_2 ||
+		video->id == AML_ISP_STREAM_3 )
+		queue->dma_attrs |= DMA_ATTR_NO_KERNEL_MAPPING;
 
 	return 0;
 }

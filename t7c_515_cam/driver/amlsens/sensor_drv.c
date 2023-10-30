@@ -122,7 +122,7 @@ struct sensor_subdev sd_ov13b10 = {
 	.sensor_power_suspend = ov13b10_power_suspend,
 	.sensor_power_resume = ov13b10_power_resume,
 };
-#if 0
+
 struct sensor_subdev sd_imx577 = {
 	.sensor_init = imx577_init,
 	.sensor_deinit = imx577_deinit,
@@ -132,7 +132,7 @@ struct sensor_subdev sd_imx577 = {
 	.sensor_power_suspend = imx577_power_suspend,
 	.sensor_power_resume = imx577_power_resume,
 };
-#endif
+
 struct sensor_subdev sd_ov16a1q = {
 	.sensor_init = ov16a1q_init,
 	.sensor_deinit = ov16a1q_deinit,
@@ -147,7 +147,7 @@ struct sensor_subdev *aml_sensors[] = {
 	&sd_imx290,
 	&sd_imx415,
 	&sd_ov13b10,
-//	&sd_imx577,
+	&sd_imx577,
 	&sd_imx378,
 	&sd_ov08a10,
 	&sd_ov5640,

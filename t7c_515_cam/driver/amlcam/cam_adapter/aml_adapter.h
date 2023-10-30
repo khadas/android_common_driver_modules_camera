@@ -99,10 +99,12 @@ struct adap_regval {
 };*/
 
 struct adap_exp_offset {
-	int long_offset;
-	int short_offset;
 	int offset_x;
 	int offset_y;
+	int long_offset_x;
+	int long_offset_y;
+	int short_offset_x;
+	int short_offset_y;
 };
 
 typedef struct {
@@ -252,6 +254,7 @@ struct adapter_dev_t {
 	struct aml_subdev subdev;
 	struct v4l2_ctrl_handler ctrls;
 	struct v4l2_ctrl *wdr;
+	struct v4l2_ctrl *offset;
 
 	struct adapter_dev_param param;
 	const struct adapter_dev_ops *ops;

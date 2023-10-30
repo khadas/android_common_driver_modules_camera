@@ -64,6 +64,7 @@ struct imx415 {
 	struct v4l2_ctrl *link_freq;
 	struct v4l2_ctrl *pixel_rate;
 	struct v4l2_ctrl *wdr;
+	struct v4l2_ctrl *data_lanes;
 
 	int status;
 	struct mutex lock;

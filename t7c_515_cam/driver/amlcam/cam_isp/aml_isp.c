@@ -94,6 +94,14 @@ static int isp_subdrv_reg_buf_alloc(struct isp_dev_t *isp_dev)
 	isp_dev->rreg_buff.vaddr[AML_PLANE_A] = virtaddr + wsize;
 	isp_dev->rreg_buff.vmaddr[AML_PLANE_A] = vmaddr + wsize;
 
+	wsize = 4 * 1024;
+	virtaddr = dma_alloc_coherent(isp_dev->dev, wsize, &paddr, GFP_KERNEL);
+
+	isp_dev->radi_buff.nplanes = 1;
+	isp_dev->radi_buff.bsize = wsize;
+	isp_dev->radi_buff.addr[AML_PLANE_A] = paddr;
+	isp_dev->radi_buff.vaddr[AML_PLANE_A] = virtaddr;
+
 	pr_debug("reg alloc\n");
 
 	return 0;
@@ -123,6 +131,16 @@ static int isp_subdrv_reg_buf_free(struct isp_dev_t *isp_dev)
 	isp_dev->rreg_buff.addr[AML_PLANE_A] = 0x0000;
 	isp_dev->rreg_buff.vaddr[AML_PLANE_A] = NULL;
 	isp_dev->rreg_buff.vmaddr[AML_PLANE_A] = NULL;
+
+	paddr = isp_dev->radi_buff.addr[AML_PLANE_A];
+	vaddr = isp_dev->radi_buff.vaddr[AML_PLANE_A];
+	bsize = 4 * 1024;
+
+	if (vaddr)
+		dma_free_coherent(isp_dev->dev, bsize, vaddr, (dma_addr_t)paddr);
+
+	isp_dev->radi_buff.addr[AML_PLANE_A] = 0x0000;
+	isp_dev->radi_buff.vaddr[AML_PLANE_A] = NULL;
 
 	pr_debug("reg free\n");
 
@@ -393,7 +411,9 @@ static int isp_subdev_set_format(void *priv, void *s_fmt, void *m_fmt)
 	isp_dev->fmt = p_fmt;
 
 	if (isp_dev->enWDRMode == WDR_MODE_2To1_LINE ||
-			isp_dev->enWDRMode == WDR_MODE_2To1_FRAME)
+		isp_dev->enWDRMode == WDR_MODE_2To1_FRAME ||
+		isp_dev->enWDRMode == ISP_WDR_DCAM_LMODE ||
+		isp_dev->enWDRMode == ISP_WDR_DCAM_FMODE)
 		isp_dev->ops->hw_set_wdr_mode(isp_dev, 1);
 	else
 		isp_dev->ops->hw_set_wdr_mode(isp_dev, 0);
@@ -447,6 +467,8 @@ static void isp_subdev_stream_off(void *priv)
 	isp_dev->ops->hw_enable_ptnr_mif(isp_dev, 0);
 	isp_dev->ops->hw_enable_mcnr_mif(isp_dev, 0);
 
+	isp_subdev_start_manual_dma(isp_dev);
+
 	isp_subdev_ptnr_buf_free(isp_dev);
 	isp_subdev_mcnr_buf_free(isp_dev);
 }
@@ -477,7 +499,9 @@ static int isp_subdev_set_ctrl(struct v4l2_ctrl *ctrl)
 		pr_info("isp_subdev_set_ctrl:%d\n", ctrl->val);
 		isp_dev->enWDRMode = ctrl->val;
 		g_info->mode = AML_ISP_SCAM;
-		if (isp_dev->enWDRMode == ISP_SDR_DCAM_MODE)
+		if (isp_dev->enWDRMode == ISP_SDR_DCAM_MODE ||
+			isp_dev->enWDRMode == ISP_WDR_DCAM_LMODE ||
+			isp_dev->enWDRMode == ISP_WDR_DCAM_FMODE)
 			g_info->mode = AML_ISP_MCAM;
 		break;
 	default:
@@ -499,7 +523,7 @@ static struct v4l2_ctrl_config mode_cfg = {
 	.type = V4L2_CTRL_TYPE_INTEGER,
 	.flags = V4L2_CTRL_FLAG_EXECUTE_ON_WRITE,
 	.min = 0,
-	.max = 5,
+	.max = 6,
 	.step = 1,
 	.def = 0,
 };

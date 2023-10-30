@@ -284,7 +284,8 @@ static int imx577_set_ctrl(struct v4l2_ctrl *ctrl)
 					       imx577->vblank + imx577->current_mode->height - IMX577_EXPOSURE_OFFSET,
 					       1, IMX577_EXPOSURE_DEFAULT);
 		break;
-
+	case V4L2_CID_AML_CSI_LANES:
+		break;
 	case V4L2_CID_AML_MODE:
 		imx577->enWDRMode = ctrl->val;
 		break;
@@ -716,6 +717,18 @@ static struct v4l2_ctrl_config wdr_cfg = {
 	.def = 0,
 };
 
+static struct v4l2_ctrl_config nlane_cfg = {
+	.ops = &imx577_ctrl_ops,
+	.id = V4L2_CID_AML_CSI_LANES,
+	.name = "sensor lanes",
+	.type = V4L2_CTRL_TYPE_INTEGER,
+	.flags = V4L2_CTRL_FLAG_VOLATILE,
+	.min = 1,
+	.max = 4,
+	.step = 1,
+	.def = 4,
+};
+
 /**
  * imx577_ctrls_init() - Initialize sensor subdevice controls
  * @imx577: pointer to imx577 device
@@ -729,7 +742,7 @@ static int imx577_ctrls_init(struct imx577 *imx577)
 	u32 lpfr;
 	int ret;
 
-	ret = v4l2_ctrl_handler_init(ctrl_hdlr, 8);
+	ret = v4l2_ctrl_handler_init(ctrl_hdlr, 9);
 	if (ret)
 		return ret;
 
@@ -770,6 +783,10 @@ static int imx577_ctrls_init(struct imx577 *imx577)
 					      V4L2_CID_PIXEL_RATE,
 					      mode->pclk, mode->pclk,
 					      1, mode->pclk);
+
+	imx577->data_lanes = v4l2_ctrl_new_custom(ctrl_hdlr, &nlane_cfg, NULL);
+	if (imx577->data_lanes)
+		imx577->data_lanes->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
 	imx577->wdr = v4l2_ctrl_new_custom(ctrl_hdlr, &wdr_cfg, NULL);
 

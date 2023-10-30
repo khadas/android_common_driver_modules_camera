@@ -187,6 +187,8 @@ static int ov5640_set_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_HBLANK:
 		break;
+	case V4L2_CID_AML_CSI_LANES:
+		break;
 	case V4L2_CID_AML_MODE:
 		ov5640->enWDRMode = ctrl->val;
 		break;
@@ -353,6 +355,8 @@ static int ov5640_set_fmt(struct v4l2_subdev *sd,
 			__v4l2_ctrl_s_ctrl(ov5640->link_freq, ov5640_get_link_freq_index(ov5640) );
 		if (ov5640->pixel_rate)
 			__v4l2_ctrl_s_ctrl_int64(ov5640->pixel_rate, ov5640_calc_pixel_rate(ov5640) );
+		if (ov5640->data_lanes)
+			__v4l2_ctrl_s_ctrl(ov5640->data_lanes, ov5640->nlanes);
 	}
 
 	*format = fmt->format;
@@ -583,6 +587,18 @@ static struct v4l2_ctrl_config wdr_cfg = {
 	.def = 0,
 };
 
+static struct v4l2_ctrl_config nlane_cfg = {
+	.ops = &ov5640_ctrl_ops,
+	.id = V4L2_CID_AML_CSI_LANES,
+	.name = "sensor lanes",
+	.type = V4L2_CTRL_TYPE_INTEGER,
+	.flags = V4L2_CTRL_FLAG_VOLATILE,
+	.min = 1,
+	.max = 4,
+	.step = 1,
+	.def = 2,
+};
+
 static int ov5640_ctrls_init(struct ov5640 *ov5640)
 {
 	int rtn = 0;
@@ -609,6 +625,10 @@ static int ov5640_ctrls_init(struct ov5640 *ov5640)
 					       V4L2_CID_PIXEL_RATE,
 					       1, INT_MAX, 1,
 					       ov5640_calc_pixel_rate(ov5640));
+
+	ov5640->data_lanes = v4l2_ctrl_new_custom(&ov5640->ctrls, &nlane_cfg, NULL);
+	if (ov5640->data_lanes)
+		ov5640->data_lanes->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
 	ov5640->wdr = v4l2_ctrl_new_custom(&ov5640->ctrls, &wdr_cfg, NULL);
 

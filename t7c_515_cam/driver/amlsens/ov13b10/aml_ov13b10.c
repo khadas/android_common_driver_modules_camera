@@ -200,8 +200,8 @@ static int ov13b10_set_gain(struct ov13b10 *ov13b10, u32 value)
 
 	//dev_info(ov13b10->dev, "ov13b10_set_gain = 0x%x \n", value);
 
-	value_H = (value << 1) >> 8;
-	value_L = (value << 1) & 0xFF;
+	value_H = value >> 8;
+	value_L = value & 0xFF;
 
 	if ( value_H == 1) {
 		for ( i = 0; i < 15; i++ ) {
@@ -230,10 +230,10 @@ static int ov13b10_set_gain(struct ov13b10 *ov13b10, u32 value)
 					}
 				}
 			}
-			if (value_L >  again_table_1[7]) {
-				value_L = again_table_1[7];
+			if (value_L >  again_table_2[7]) {
+				value_L = again_table_2[7];
 			}
-		} else if (((value_H == 4 || value_H > 4) && value_H < 8)) {
+		} else if (value_H >= 4 && value_H < 8) {
 				for ( i = 0; i < 3; i++ ) {
 					if ( value_L < ((again_table_3[i] + again_table_3[i + 1])/2) ) {
 						value_L = again_table_3[i];
@@ -245,17 +245,18 @@ static int ov13b10_set_gain(struct ov13b10 *ov13b10, u32 value)
 						}
 					}
 				}
-				if (value_L >  again_table_1[4]) {
-					value_L = again_table_1[4];
+				if (value_L >  again_table_3[3]) {
+					value_L = again_table_3[3];
 				}
-			} else {
+			} else if (value_H >= 8 && value_H <= 0x0F) {
 				if ( value_L < (0x80/2)) {
 						value_L = 0;
 					} else {
 						value_L = 0x80;
 			        }
-	            }
-
+	        } else {
+				dev_err(ov13b10->dev, "Wrong gain value \n");
+			}
 	ret = ov13b10_write_reg(ov13b10, OV13B10_GAIN, value_H);
 	if (ret)
 		dev_err(ov13b10->dev, "Unable to write OV13B10_GAIN_H \n");
@@ -328,6 +329,8 @@ static int ov13b10_set_ctrl(struct v4l2_ctrl *ctrl)
 		ret = ov13b10_set_exposure(ov13b10, ctrl->val);
 		break;
 	case V4L2_CID_HBLANK:
+		break;
+	case V4L2_CID_AML_CSI_LANES:
 		break;
 	case V4L2_CID_AML_MODE:
 		ov13b10->enWDRMode = ctrl->val;
@@ -521,6 +524,8 @@ static int ov13b10_set_fmt(struct v4l2_subdev *sd,
 			__v4l2_ctrl_s_ctrl(ov13b10->link_freq, ov13b10_get_link_freq_index(ov13b10));
 		if (ov13b10->pixel_rate)
 			__v4l2_ctrl_s_ctrl_int64(ov13b10->pixel_rate, ov13b10_calc_pixel_rate(ov13b10));
+		if (ov13b10->data_lanes)
+			__v4l2_ctrl_s_ctrl(ov13b10->data_lanes, ov13b10->nlanes);
 	}
 
 	*format = fmt->format;
@@ -792,11 +797,23 @@ static struct v4l2_ctrl_config fps_cfg = {
 	.def = 30,
 };
 
+static struct v4l2_ctrl_config nlane_cfg = {
+	.ops = &ov13b10_ctrl_ops,
+	.id = V4L2_CID_AML_CSI_LANES,
+	.name = "sensor lanes",
+	.type = V4L2_CTRL_TYPE_INTEGER,
+	.flags = V4L2_CTRL_FLAG_VOLATILE,
+	.min = 1,
+	.max = 4,
+	.step = 1,
+	.def = 4,
+};
+
 static int ov13b10_ctrls_init(struct ov13b10 *ov13b10)
 {
 	int rtn = 0;
 
-	v4l2_ctrl_handler_init(&ov13b10->ctrls, 6);
+	v4l2_ctrl_handler_init(&ov13b10->ctrls, 7);
 
 	v4l2_ctrl_new_std(&ov13b10->ctrls, &ov13b10_ctrl_ops,
 				V4L2_CID_GAIN, 0, 0xFFFF, 1, 0);
@@ -818,6 +835,10 @@ static int ov13b10_ctrls_init(struct ov13b10 *ov13b10)
 					       V4L2_CID_PIXEL_RATE,
 					       1, INT_MAX, 1,
 					       ov13b10_calc_pixel_rate(ov13b10));
+
+	ov13b10->data_lanes = v4l2_ctrl_new_custom(&ov13b10->ctrls, &nlane_cfg, NULL);
+	if (ov13b10->data_lanes)
+		ov13b10->data_lanes->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
 	ov13b10->wdr = v4l2_ctrl_new_custom(&ov13b10->ctrls, &wdr_cfg, NULL);
 	ov13b10->address = v4l2_ctrl_new_custom(&ov13b10->ctrls, &addr_cfg, NULL);

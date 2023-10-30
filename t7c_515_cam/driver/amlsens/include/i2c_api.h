@@ -41,7 +41,7 @@ static inline int i2c_read_a16d8(struct i2c_client *client, u8 slave, u16 addr, 
 	}
 
 	if (ret != msg_count)
-		dev_info(&client->dev, "I2C read with i2c transfer failed for addr: %x, ret %d\n", addr, ret);
+		dev_info(&client->dev, "I2C read failed for addr: %x, ret %d\n", addr, ret);
 
 	*value = buf[0] & 0xff;
 
@@ -108,7 +108,7 @@ static inline int i2c_read_a16d16(struct i2c_client *client, u8 slave, u16 addr,
 	}
 
 	if (ret != msg_count)
-		dev_info(&client->dev, "I2C read with i2c transfer failed for addr: %x, ret %d\n", addr, ret);
+		dev_info(&client->dev, "I2C read failed for addr: %x, ret %d\n", addr, ret);
 
 	*value = ((buf[0] << 8) & 0xff00) | (buf[1] & 0xff);
 
@@ -175,7 +175,7 @@ static inline int i2c_read_a8d8(struct i2c_client *client, u8 slave, u8 addr, u8
 	}
 
 	if (ret != msg_count)
-		dev_info(&client->dev, "I2C read with i2c transfer failed for addr: %x, ret %d\n", addr, ret);
+		dev_info(&client->dev, "I2C read failed for addr: %x, ret %d\n", addr, ret);
 
 	*value = buf[0] & 0xff;
 

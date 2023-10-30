@@ -1033,6 +1033,7 @@ void isp_disp_pps_config(struct isp_dev_t *isp_dev, u32 idx,
 			val = ((pps_lut_tap4[i][2] << 16) & 0x7ff0000) | ((pps_lut_tap4[i][3] & 0x7ff) << 0);
 			isp_reg_write(isp_dev, addr, val);
 		}
+
 		addr = DISP0_PPS_PRE_HSCALE_COEF_1 + ((idx * 0x100) << 2);
 		val = (0 << 16) | 0;
 		isp_reg_write(isp_dev, addr, val);

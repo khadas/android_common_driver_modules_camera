@@ -147,6 +147,7 @@ struct imx577 {
 	struct v4l2_ctrl *vblank_ctrl;
 
 	struct v4l2_ctrl *wdr;
+	struct v4l2_ctrl *data_lanes;
 
 	struct v4l2_ctrl *exp_ctrl;
 	struct v4l2_ctrl *again_ctrl;

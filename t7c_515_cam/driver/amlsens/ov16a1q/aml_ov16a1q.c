@@ -401,6 +401,8 @@ static int ov16a1q_set_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_HBLANK:
 		break;
+	case V4L2_CID_AML_CSI_LANES:
+		break;
 	case V4L2_CID_AML_MODE:
 		ov16a1q->enWDRMode = ctrl->val;
 		break;
@@ -595,6 +597,8 @@ static int ov16a1q_set_fmt(struct v4l2_subdev *sd,
 			__v4l2_ctrl_s_ctrl(ov16a1q->link_freq, ov16a1q_get_link_freq_index(ov16a1q) );
 		if (ov16a1q->pixel_rate)
 			__v4l2_ctrl_s_ctrl_int64(ov16a1q->pixel_rate, ov16a1q_calc_pixel_rate(ov16a1q) );
+		if (ov16a1q->data_lanes)
+			__v4l2_ctrl_s_ctrl(ov16a1q->data_lanes, ov16a1q->nlanes);
 	}
 
 	*format = fmt->format;
@@ -894,6 +898,18 @@ static struct v4l2_ctrl_config fps_cfg = {
 	.def = 30,
 };
 
+static struct v4l2_ctrl_config nlane_cfg = {
+	.ops = &ov16a1q_ctrl_ops,
+	.id = V4L2_CID_AML_CSI_LANES,
+	.name = "sensor lanes",
+	.type = V4L2_CTRL_TYPE_INTEGER,
+	.flags = V4L2_CTRL_FLAG_VOLATILE,
+	.min = 1,
+	.max = 4,
+	.step = 1,
+	.def = 4,
+};
+
 static int ov16a1q_ctrls_init(struct ov16a1q *ov16a1q)
 {
 	int rtn = 0;
@@ -920,6 +936,10 @@ static int ov16a1q_ctrls_init(struct ov16a1q *ov16a1q)
 						   V4L2_CID_PIXEL_RATE,
 						   1, INT_MAX, 1,
 						   ov16a1q_calc_pixel_rate(ov16a1q));
+
+	ov16a1q->data_lanes = v4l2_ctrl_new_custom(&ov16a1q->ctrls, &nlane_cfg, NULL);
+	if (ov16a1q->data_lanes)
+		ov16a1q->data_lanes->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
 	ov16a1q->wdr = v4l2_ctrl_new_custom(&ov16a1q->ctrls, &wdr_cfg, NULL);
 	ov16a1q->address = v4l2_ctrl_new_custom(&ov16a1q->ctrls, &addr_cfg, NULL);

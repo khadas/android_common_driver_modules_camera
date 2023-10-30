@@ -16,7 +16,9 @@
 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 *
 */
-
+#ifdef pr_fmt
+#undef pr_fmt
+#endif
 #define pr_fmt(fmt)  "aml-adap:%s:%d: " fmt, __func__, __LINE__
 
 #include <linux/io.h>
@@ -320,7 +322,6 @@ static int adap_frontend_init(void *a_dev)
 	u32 mem_addr0_a, mem_addr0_b,mem_addr1_a, mem_addr1_b;
 	u32 reg_lbuf0_vs_sel;
 	u32 reg_vfifo_vs_out_pre;
-	u32 long_offset,short_offset;
 	int module = FRONTEND_MD;
 	struct adapter_dev_t *adap_dev = a_dev;
 	struct adapter_dev_param *param = &adap_dev->param;
@@ -349,10 +350,10 @@ static int adap_frontend_init(void *a_dev)
 		cfg_isp2ddr_enable = 0;
 		cfg_isp2comb_enable = 0;
 		vc_mode = 0x11110000;
-		mem_addr0_a = param->ddr_buf[0].addr[0];
-		mem_addr0_b = param->ddr_buf[0].addr[0];
-		mem_addr1_a = param->ddr_buf[0].addr[0];
-		mem_addr1_b = param->ddr_buf[0].addr[0];
+		mem_addr0_a = param->ddr_buf[0].addr[AML_PLANE_A];
+		mem_addr0_b = param->ddr_buf[0].addr[AML_PLANE_A];
+		mem_addr1_a = param->ddr_buf[0].addr[AML_PLANE_A];
+		mem_addr1_b = param->ddr_buf[0].addr[AML_PLANE_A];
 		reg_lbuf0_vs_sel = 3;
 		reg_vfifo_vs_out_pre = 7;
 		cfg_line_sup_vs_en	= 1;
@@ -381,10 +382,10 @@ static int adap_frontend_init(void *a_dev)
 		cfg_isp2ddr_enable = 1;
 		cfg_isp2comb_enable = 0;
 		vc_mode = 0x111100f1;
-		mem_addr0_a = param->ddr_buf[0].addr[0];
-		mem_addr0_b = param->ddr_buf[0].addr[0];
-		mem_addr1_a = param->ddr_buf[0].addr[0];
-		mem_addr1_b = param->ddr_buf[0].addr[0];
+		mem_addr0_a = param->ddr_buf[0].addr[AML_PLANE_A];
+		mem_addr0_b = param->ddr_buf[0].addr[AML_PLANE_A];
+		mem_addr1_a = param->ddr_buf[0].addr[AML_PLANE_B];
+		mem_addr1_b = param->ddr_buf[0].addr[AML_PLANE_B];
 		reg_lbuf0_vs_sel = 0;
 		reg_vfifo_vs_out_pre = 0;
 		cfg_line_sup_vs_en = 1;
@@ -397,10 +398,10 @@ static int adap_frontend_init(void *a_dev)
 		cfg_isp2ddr_enable = 0;
 		cfg_isp2comb_enable = 0;
 		vc_mode = 0x111100f1;
-		mem_addr0_a = param->ddr_buf[0].addr[0];
-		mem_addr0_b = param->ddr_buf[0].addr[0];
-		mem_addr1_a = param->ddr_buf[0].addr[0];
-		mem_addr1_b = param->ddr_buf[0].addr[0];
+		mem_addr0_a = param->ddr_buf[0].addr[AML_PLANE_A];
+		mem_addr0_b = param->ddr_buf[0].addr[AML_PLANE_A];
+		mem_addr1_a = param->ddr_buf[0].addr[AML_PLANE_A];
+		mem_addr1_b = param->ddr_buf[0].addr[AML_PLANE_A];
 		reg_lbuf0_vs_sel = 0;
 		reg_vfifo_vs_out_pre = 0;
 		cfg_line_sup_vs_en = 1;
@@ -542,7 +543,7 @@ static int adap_frontend_init(void *a_dev)
 					cfg_isp2ddr_enable     << 25 |
 					cfg_isp2comb_enable    << 26);
 
-	if (param->mode == MODE_MIPI_RAW_HDR_DDR_DIRCT) {
+	if (param->mode == MODE_MIPI_RAW_HDR_DDR_DIRCT || param->mode == MODE_MIPI_RAW_HDR_DDR_DDR) {
 		if (param->dol_type == ADAP_DOL_LINEINFO) {
 			module_reg_write(a_dev, module, CSI2_VC_MODE, 0x11110052);
 			//if ((fe_io == FRONTEND1_IO) && frontend1_flag )
@@ -566,27 +567,23 @@ static int adap_frontend_init(void *a_dev)
 				module_reg_write(a_dev, module, CSI2_VC_MODE2_MATCH_B_L, 0x222424);
 				module_reg_write(a_dev, module, CSI2_VC_MODE2_MATCH_B_H, 0x0);
 			}
-			long_offset = param->offset.long_offset;
-			short_offset = param->offset.short_offset;
-			module_update_bits(a_dev, module, CSI2_X_START_END_MEM, 0xc, 0, 16);
+			module_update_bits(a_dev, module, CSI2_X_START_END_MEM, param->offset.long_offset_x, 0, 16);
 			module_update_bits(a_dev, module, CSI2_X_START_END_MEM,
-						0xc + param->width - 1, 16, 16);
+						param->offset.long_offset_x + param->width - 1, 16, 16);
 			module_update_bits(a_dev, module, CSI2_Y_START_END_MEM,
-						long_offset, 0, 16);
+						param->offset.long_offset_y, 0, 16);
 			module_update_bits(a_dev, module, CSI2_Y_START_END_MEM,
-						long_offset + param->height - 1, 16, 16);
+						param->offset.long_offset_y + param->height - 1, 16, 16);
 			//set short exposure offset
-			module_update_bits(a_dev, module, CSI2_X_START_END_ISP, 0xc, 0, 16);
+			module_update_bits(a_dev, module, CSI2_X_START_END_ISP, param->offset.short_offset_x, 0, 16);
 			module_update_bits(a_dev, module, CSI2_X_START_END_ISP,
-						0xc + param->width - 1, 16, 16);
+						param->offset.short_offset_x + param->width - 1, 16, 16);
 			module_update_bits(a_dev, module, CSI2_Y_START_END_ISP,
-						short_offset, 0, 16);
+						param->offset.short_offset_y, 0, 16);
 			module_update_bits(a_dev, module, CSI2_Y_START_END_ISP,
-						short_offset + param->height - 1, 16, 16);
+						param->offset.short_offset_y + param->height - 1, 16, 16);
 		}else if (param->dol_type == ADAP_DOL_VC) {
 			module_reg_write(a_dev, module, CSI2_VC_MODE, 0x11220040);
-			//if ((fe_io == FRONTEND1_IO) && frontend1_flag )
-			//	module_reg_write(a_dev, module, CSI2_VC_MODE, 0x22110000);
 		}
 	}
 
@@ -677,10 +674,10 @@ static int adap_reader_init(void *a_dev)
 		port_sel_1 = 1;
 		ddr_rden_0 = 1;
 		ddr_rden_1 = 0;
-		ddr_rd0_ping = param->ddr_buf[0].addr[0];
-		ddr_rd0_pong = param->ddr_buf[0].addr[0];
-		ddr_rd1_ping = param->ddr_buf[0].addr[0];
-		ddr_rd1_pong = param->ddr_buf[0].addr[0];
+		ddr_rd0_ping = param->ddr_buf[0].addr[AML_PLANE_A];
+		ddr_rd0_pong = param->ddr_buf[0].addr[AML_PLANE_A];
+		ddr_rd1_ping = param->ddr_buf[0].addr[AML_PLANE_A];
+		ddr_rd1_pong = param->ddr_buf[0].addr[AML_PLANE_A];
 	break;
 	case MODE_MIPI_RAW_SDR_DIRCT:
 		dol_mode = 0;
@@ -714,10 +711,10 @@ static int adap_reader_init(void *a_dev)
 		port_sel_1 = 1;
 		ddr_rden_0 = 1;
 		ddr_rden_1 = 1;
-		ddr_rd0_ping = param->ddr_buf[0].addr[0];
-		ddr_rd0_pong = param->ddr_buf[0].addr[0];
-		ddr_rd1_ping = param->ddr_buf[0].addr[0];
-		ddr_rd1_pong = param->ddr_buf[0].addr[0];
+		ddr_rd0_ping = param->ddr_buf[0].addr[AML_PLANE_A];
+		ddr_rd0_pong = param->ddr_buf[0].addr[AML_PLANE_A];
+		ddr_rd1_ping = param->ddr_buf[0].addr[AML_PLANE_A];
+		ddr_rd1_pong = param->ddr_buf[0].addr[AML_PLANE_A];
 	break;
 	case MODE_MIPI_YUV_SDR_DDR:
 		dol_mode = 0;
@@ -810,7 +807,10 @@ static int adap_reader_init(void *a_dev)
 	module_reg_write(a_dev, module, MIPI_ADAPT_DDR_RD1_CNTL3, ddr_rd1_pong);
 
 	module_reg_read(a_dev, module, MIPI_ADAPT_DDR_RD1_CNTL0, &val);
-	module_reg_write(a_dev, module, MIPI_ADAPT_DDR_RD1_CNTL0, val | ddr_rden_1  << 0 | HDR_LOOPBACK_MODE << 1);
+	if (HDR_LOOPBACK_MODE && (param->mode == MODE_MIPI_RAW_HDR_DDR_DIRCT))
+		module_reg_write(a_dev, module, MIPI_ADAPT_DDR_RD1_CNTL0, val | ddr_rden_1 << 0 | HDR_LOOPBACK_MODE << 1);
+	else
+		module_reg_write(a_dev, module, MIPI_ADAPT_DDR_RD1_CNTL0, val | ddr_rden_1 << 0);
 
 	return rtn;
 }
@@ -1178,14 +1178,14 @@ static int adap_hw_init(void *a_dev)
 
 	param->fe_param.fe_sel = adap_dev->index;
 	param->fe_param.fe_work_mode = param->mode;
-	param->fe_param.fe_mem_x_start = 0;
-	param->fe_param.fe_mem_x_end = param->width - 1;
-	param->fe_param.fe_mem_y_start = 0;
-	param->fe_param.fe_mem_y_end = param->height - 1;
-	param->fe_param.fe_isp_x_start = 0;
-	param->fe_param.fe_isp_x_end = param->width - 1;
-	param->fe_param.fe_isp_y_start = 0;
-	param->fe_param.fe_isp_y_end = param->height - 1;
+	param->fe_param.fe_mem_x_start = param->offset.offset_x;
+	param->fe_param.fe_mem_x_end = param->offset.offset_x + param->width - 1;
+	param->fe_param.fe_mem_y_start = param->offset.offset_y;
+	param->fe_param.fe_mem_y_end = param->offset.offset_y + param->height - 1;
+	param->fe_param.fe_isp_x_start = param->offset.offset_x;
+	param->fe_param.fe_isp_x_end = param->offset.offset_x + param->width - 1;
+	param->fe_param.fe_isp_y_start = param->offset.offset_y;
+	param->fe_param.fe_isp_y_end = param->offset.offset_y + param->height - 1;
 	param->fe_param.fe_mem_other_addr = 0;
 
 	param->fe_param.fe_mem_line_stride =
@@ -1284,6 +1284,10 @@ static int adap_fe_cfg_buf(struct aml_video *video, struct aml_buffer *buff)
 
 	module_reg_write(video->priv, module, CSI2_DDR_START_PIX, addr);
 	module_reg_write(video->priv, module, CSI2_DDR_START_PIX_ALT, addr);
+	if (adap_dev->param.mode == MODE_MIPI_RAW_HDR_DDR_DDR) {
+		module_reg_write(video->priv, module, CSI2_DDR_START_PIX_B, buff->addr[AML_PLANE_B]);
+		module_reg_write(video->priv, module, CSI2_DDR_START_PIX_B_ALT, buff->addr[AML_PLANE_B]);
+	}
 
 	return 0;
 }
@@ -1311,26 +1315,33 @@ static int adap_wdr_cfg_buf(void *a_dev)
 		break;
 	}
 
-	module_reg_write(a_dev, module, CSI2_DDR_START_PIX, param->ddr_buf[0].addr[0]);
-	module_reg_write(a_dev, module, CSI2_DDR_START_PIX_ALT, param->ddr_buf[0].addr[0]);
-	module_reg_write(a_dev, module, CSI2_DDR_START_PIX_B, param->ddr_buf[0].addr[0]);
-	module_reg_write(a_dev, module, CSI2_DDR_START_PIX_B_ALT, param->ddr_buf[0].addr[0]);
-	module_reg_write(a_dev, module, CSI2_DDR_START_OTHER, param->ddr_buf[0].addr[0]);
-	module_reg_write(a_dev, module, CSI2_DDR_START_OTHER_ALT, param->ddr_buf[0].addr[0]);
+	module_reg_write(a_dev, module, CSI2_DDR_START_PIX, param->ddr_buf[0].addr[AML_PLANE_A]);
+	module_reg_write(a_dev, module, CSI2_DDR_START_PIX_ALT, param->ddr_buf[0].addr[AML_PLANE_A]);
+	if (param->mode == MODE_MIPI_RAW_HDR_DDR_DDR) {
+		module_reg_write(a_dev, module, CSI2_DDR_START_PIX_B, param->ddr_buf[0].addr[AML_PLANE_B]);
+		module_reg_write(a_dev, module, CSI2_DDR_START_PIX_B_ALT, param->ddr_buf[0].addr[AML_PLANE_B]);
+	}
+	module_reg_write(a_dev, module, CSI2_DDR_START_OTHER, param->ddr_buf[0].addr[AML_PLANE_A]);
+	module_reg_write(a_dev, module, CSI2_DDR_START_OTHER_ALT, param->ddr_buf[0].addr[AML_PLANE_A]);
 
-	if (HDR_LOOPBACK_MODE)
+	if (HDR_LOOPBACK_MODE && (param->mode == MODE_MIPI_RAW_HDR_DDR_DIRCT))
 		module_reg_write(a_dev, module, CSI2_DDR_LOOP_LINES_PIX, 119);
 
 	module = READER_MD;
 
-	module_reg_write(a_dev, module, MIPI_ADAPT_DDR_RD0_CNTL2, param->ddr_buf[0].addr[0]);
-	module_reg_write(a_dev, module, MIPI_ADAPT_DDR_RD0_CNTL3, param->ddr_buf[0].addr[0]);
-	module_reg_write(a_dev, module, MIPI_ADAPT_DDR_RD1_CNTL2, param->ddr_buf[0].addr[0]);
-	module_reg_write(a_dev, module, MIPI_ADAPT_DDR_RD1_CNTL3, param->ddr_buf[0].addr[0]);
+	module_reg_write(a_dev, module, MIPI_ADAPT_DDR_RD0_CNTL2, param->ddr_buf[0].addr[AML_PLANE_A]);
+	module_reg_write(a_dev, module, MIPI_ADAPT_DDR_RD0_CNTL3, param->ddr_buf[0].addr[AML_PLANE_A]);
+	if (param->mode == MODE_MIPI_RAW_HDR_DDR_DDR) {
+		module_reg_write(a_dev, module, MIPI_ADAPT_DDR_RD1_CNTL2, param->ddr_buf[0].addr[AML_PLANE_B]);
+		module_reg_write(a_dev, module, MIPI_ADAPT_DDR_RD1_CNTL3, param->ddr_buf[0].addr[AML_PLANE_B]);
+	} else {
+		module_reg_write(a_dev, module, MIPI_ADAPT_DDR_RD1_CNTL2, param->ddr_buf[0].addr[AML_PLANE_A]);
+		module_reg_write(a_dev, module, MIPI_ADAPT_DDR_RD1_CNTL3, param->ddr_buf[0].addr[AML_PLANE_A]);
+	}
 
-	if (HDR_LOOPBACK_MODE) {
-		module_reg_write(a_dev, module, MIPI_ADAPT_DDR_RD1_CNTL5, param->ddr_buf[0].addr[0] + (param->rd_param.rd_mem_line_stride << 4) * 120);
-		module_reg_write(a_dev, module, MIPI_ADAPT_DDR_RD1_CNTL6, param->ddr_buf[0].addr[0] + (param->rd_param.rd_mem_line_stride << 4) * 120);
+	if (HDR_LOOPBACK_MODE && (param->mode == MODE_MIPI_RAW_HDR_DDR_DIRCT)) {
+		module_reg_write(a_dev, module, MIPI_ADAPT_DDR_RD1_CNTL5, param->ddr_buf[0].addr[AML_PLANE_A] + (param->rd_param.rd_mem_line_stride << 4) * 120);
+		module_reg_write(a_dev, module, MIPI_ADAPT_DDR_RD1_CNTL6, param->ddr_buf[0].addr[AML_PLANE_A] + (param->rd_param.rd_mem_line_stride << 4) * 120);
 	}
 
 	return 0;
@@ -1418,13 +1429,22 @@ static int adap_rd_set_fmt(struct aml_video *video, struct aml_format *fmt)
 static int adap_rd_cfg_buf(struct aml_video *video, struct aml_buffer *buff)
 {
 	int module = READER_MD;
-	u32 addr = buff->addr[AML_PLANE_B];
+	u32 addr = buff->addr[AML_PLANE_A];
+	struct adapter_dev_t *adap_dev = video->priv;
 
 	module_reg_write(video->priv, module, MIPI_ADAPT_DDR_RD0_CNTL2, addr);
 	module_reg_write(video->priv, module, MIPI_ADAPT_DDR_RD0_CNTL3, addr);
+	if (adap_dev->param.mode == MODE_MIPI_RAW_HDR_DDR_DDR) {
+		module_reg_write(video->priv, module, MIPI_ADAPT_DDR_RD1_CNTL2, buff->addr[AML_PLANE_B]);
+		module_reg_write(video->priv, module, MIPI_ADAPT_DDR_RD1_CNTL3, buff->addr[AML_PLANE_B]);
+	}
 
 	module_update_bits(video->priv, module, MIPI_ADAPT_DDR_RD0_CNTL0, 1, 25, 1);
 	module_update_bits(video->priv, module, MIPI_ADAPT_DDR_RD0_CNTL0, 0, 25, 1);
+	if (adap_dev->param.mode == MODE_MIPI_RAW_HDR_DDR_DDR) {
+		module_update_bits(video->priv, module, MIPI_ADAPT_DDR_RD1_CNTL0, 1, 25, 1);
+		module_update_bits(video->priv, module, MIPI_ADAPT_DDR_RD1_CNTL0, 0, 25, 1);
+	}
 
 	return 0;
 }

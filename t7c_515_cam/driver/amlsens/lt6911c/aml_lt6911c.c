@@ -66,6 +66,8 @@ static inline struct lt6911c *to_lt6911c(struct v4l2_subdev *_sd)
 
 static int lt6911c_set_ctrl(struct v4l2_ctrl *ctrl) {
 	switch (ctrl->id) {
+	case V4L2_CID_AML_CSI_LANES:
+		break;
 	case V4L2_CID_AML_USER_FPS:
 		break;
 	}
@@ -168,6 +170,18 @@ static struct v4l2_ctrl_config v4l2_ctrl_output_fps = {
 	.max = 120,
 	.step = 1,
 	.def = 60,
+};
+
+static struct v4l2_ctrl_config nlane_cfg = {
+	.ops = &lt6911c_ctrl_ops,
+	.id = V4L2_CID_AML_CSI_LANES,
+	.name = "sensor lanes",
+	.type = V4L2_CTRL_TYPE_INTEGER,
+	.flags = V4L2_CTRL_FLAG_VOLATILE,
+	.min = 1,
+	.max = 4,
+	.step = 1,
+	.def = 2,
 };
 
 static const struct v4l2_subdev_video_ops lt6911c_video_ops = {
@@ -416,6 +430,8 @@ static int lt6911c_set_fmt(struct v4l2_subdev *sd,
 			__v4l2_ctrl_s_ctrl(lt6911c->link_freq, lt6911c_get_link_freq_index(lt6911c));
 		if (lt6911c->pixel_rate)
 			__v4l2_ctrl_s_ctrl_int64(lt6911c->pixel_rate, lt6911c_calc_pixel_rate(lt6911c));
+		if (lt6911c->data_lanes)
+			__v4l2_ctrl_s_ctrl(lt6911c->data_lanes, lt6911c->nlanes);
 	}
 
 	*format = fmt->format;
@@ -464,7 +480,7 @@ static const struct v4l2_subdev_ops lt6911c_subdev_ops = {
 
 static int lt6911c_ctrls_init(struct lt6911c *lt6911c) {
 	int rtn = 0;
-	v4l2_ctrl_handler_init(&lt6911c->ctrls, 6);
+	v4l2_ctrl_handler_init(&lt6911c->ctrls, 7);
 	v4l2_ctrl_new_std(&lt6911c->ctrls, &lt6911c_ctrl_ops,
 				V4L2_CID_GAIN, 0, 0xF0, 1, 0);
 	v4l2_ctrl_new_std(&lt6911c->ctrls, &lt6911c_ctrl_ops,
@@ -481,6 +497,11 @@ static int lt6911c_ctrls_init(struct lt6911c *lt6911c) {
 						   V4L2_CID_PIXEL_RATE,
 						   1, INT_MAX, 1,
 						   lt6911c_calc_pixel_rate(lt6911c));
+
+	lt6911c->data_lanes = v4l2_ctrl_new_custom(&lt6911c->ctrls, &nlane_cfg, NULL);
+	if (lt6911c->data_lanes)
+		lt6911c->data_lanes->flags |= V4L2_CTRL_FLAG_READ_ONLY;
+
 	lt6911c->wdr = v4l2_ctrl_new_custom(&lt6911c->ctrls, &wdr_cfg, NULL);
 	lt6911c->fps = v4l2_ctrl_new_custom(&lt6911c->ctrls, &v4l2_ctrl_output_fps, NULL);
 

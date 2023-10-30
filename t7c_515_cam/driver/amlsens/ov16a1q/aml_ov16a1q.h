@@ -71,6 +71,7 @@ struct ov16a1q {
 	struct v4l2_ctrl *pixel_rate;
 	struct v4l2_ctrl *wdr;
 	struct v4l2_ctrl *address;
+	struct v4l2_ctrl *data_lanes;
 
 	int status;
 	struct mutex lock;

@@ -16,7 +16,9 @@
 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 *
 */
-
+#ifdef pr_fmt
+#undef pr_fmt
+#endif
 #define pr_fmt(fmt)  "aml-csiphy:%s:%d: " fmt, __func__, __LINE__
 #include <linux/version.h>
 #include <linux/io.h>
@@ -94,8 +96,6 @@ static void csiphy_of_parse_ports_clock_mod(struct csiphy_dev_t *csiphy_dev) {
 			continue;
 		if (!of_property_read_u32(node, "clock-continue", &clock_mode)) {
 			pr_info("clock-continue = %u \n", clock_mode);
-		} else {
-			pr_err("can not parse clock-continue \n");
 		}
 		of_node_put(node);
 	}
@@ -387,10 +387,11 @@ static int csiphy_subdev_get_link_freq(struct media_entity *entity, s64 *link_fr
 	return 0;
 }
 
-static int csiphy_subdev_get_casd(struct media_entity *entity, struct csiphy_async_subdev **casd)
+static int csiphy_subdev_get_lanes(struct media_entity *entity, int *data_lanes)
 {
 	struct media_entity *sensor;
 	struct v4l2_subdev *subdev;
+	struct v4l2_ctrl *ctrl;
 
 	sensor = csiphy_subdev_get_sensor_entity(entity);
 	if (!sensor) {
@@ -400,29 +401,34 @@ static int csiphy_subdev_get_casd(struct media_entity *entity, struct csiphy_asy
 
 	subdev = media_entity_to_v4l2_subdev(sensor);
 
-	*casd = subdev->host_priv;
+	ctrl = v4l2_ctrl_find(subdev->ctrl_handler, V4L2_CID_AML_CSI_LANES);
+	if (!ctrl) {
+		pr_err("Failed to get csi lanes ctrl\n");
+		return -EINVAL;
+	}
+
+	*data_lanes = ctrl->val;
 
 	return 0;
 }
 
 static int csiphy_subdev_stream_on(void *priv)
 {
-	int rtn = -1;
+	int rtn = -1, nlanes = 0;
 	s64 link_freq = 0;
-	struct csiphy_async_subdev *casd;
 	struct csiphy_dev_t *csiphy_dev = priv;
 	rtn = csiphy_subdev_get_link_freq(&csiphy_dev->sd.entity, &link_freq);
 	if (rtn)
 		return rtn;
 
-	rtn = csiphy_subdev_get_casd(&csiphy_dev->sd.entity, &casd);
-	if (rtn || !casd)
+	rtn = csiphy_subdev_get_lanes(&csiphy_dev->sd.entity, &nlanes);
+	if (rtn)
 		return rtn;
 
-	csiphy_dev->lanecnt = casd->data_lanes;
+	csiphy_dev->lanecnt = nlanes;
 	csiphy_dev->lanebps = link_freq;
 
-	return csiphy_dev->ops->hw_start(csiphy_dev, csiphy_dev->index, casd->data_lanes, link_freq);
+	return csiphy_dev->ops->hw_start(csiphy_dev, csiphy_dev->index, nlanes, link_freq);
 }
 
 static void csiphy_subdev_stream_off(void *priv)
@@ -509,7 +515,7 @@ static int csiphy_proc_show(struct seq_file *proc_entry, void *arg ) {
 
 	seq_printf(proc_entry, " ------- PubAttr Info ------- \n");
 	seq_printf(proc_entry, "LaneCnt" "\t" "LaneBps" "\t" "\n");
-	seq_printf(proc_entry, "%d \t %d \t \n\n",
+	seq_printf(proc_entry, "%d \t %ld \t \n\n",
 					c_dev->lanecnt,
 					c_dev->lanebps );
 
