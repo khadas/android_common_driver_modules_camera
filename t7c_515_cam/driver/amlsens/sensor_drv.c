@@ -32,6 +32,7 @@
 #include "ov13b10/aml_ov13b10.h"
 #include "imx577/aml_imx577.h"
 #include "ov16a1q/aml_ov16a1q.h"
+#include "max96712/max96712_avm_drv.h"
 
 struct sensor_subdev sd_imx290 = {
 	.sensor_init = imx290_init,
@@ -143,7 +144,19 @@ struct sensor_subdev sd_ov16a1q = {
 	.sensor_power_resume = ov16a1q_power_resume,
 };
 
+static struct sensor_subdev sd_max96712_avm = {
+	//.name = "max96712",
+	.sensor_init = max96712_avm_init,
+	.sensor_deinit = max96712_avm_deinit,
+	.sensor_get_id = max96712_avm_sensor_id,
+	.sensor_power_on = max96712_avm_power_on,
+	.sensor_power_off = max96712_avm_power_off,
+	.sensor_power_suspend = max96712_avm_power_suspend,
+	.sensor_power_resume = max96712_avm_power_resume,
+};
+
 struct sensor_subdev *aml_sensors[] = {
+	&sd_max96712_avm,
 	&sd_imx290,
 	&sd_imx415,
 	&sd_ov13b10,

@@ -2,6 +2,10 @@
 /*
  * Copyright (c) 2023 Amlogic, Inc. All rights reserved.
  */
+
+#ifndef  AML_CAM_SENSOR_DRV_H
+#define AML_CAM_SENSOR_DRV_H
+
 #include <linux/version.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
@@ -72,3 +76,5 @@ struct sensor_subdev {
 };
 
 extern struct sensor_subdev *aml_sensors[32];
+
+#endif

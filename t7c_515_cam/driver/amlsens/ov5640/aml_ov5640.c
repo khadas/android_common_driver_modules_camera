@@ -14,6 +14,8 @@
 #define FREQ_INDEX_1080P	0
 #define FREQ_INDEX_5MP		1
 
+#define OV5640_REG_FORMAT_CONTROL00     0x4300
+
 /* supported link frequencies */
 static const s64 ov5640_link_freq_2lanes[] = {
 	[FREQ_INDEX_1080P] = 672000000,
@@ -45,8 +47,8 @@ static const struct ov5640_mode ov5640_modes_2lanes[] = {
 		.width = 2592,
 		.height = 1944,
 		.hmax = 0x19c8,
-		.data = setting_2592_1944_2lane_672m_30fps,
-		.data_size = ARRAY_SIZE(setting_2592_1944_2lane_672m_30fps),
+		.data = setting_2592_1944_2lane_672m_15fps,
+		.data_size = ARRAY_SIZE(setting_2592_1944_2lane_672m_15fps),
 
 		.link_freq_index = FREQ_INDEX_5MP,
 	},
@@ -297,6 +299,47 @@ static u64 ov5640_calc_pixel_rate(struct ov5640 *ov5640)
 	return pixel_rate;
 }
 
+
+static int ov5640_set_framefmt(struct ov5640 *sensor,
+			       struct v4l2_mbus_framefmt *format)
+{
+	int ret = 0;
+
+	u8 fmt = 0x33;
+
+	switch (format->code) {
+	case MEDIA_BUS_FMT_VYUY8_1X16:
+	case MEDIA_BUS_FMT_VYUY8_2X8:
+		/* YUV422, VYUY */
+		fmt = 0x33;
+		break;
+	case MEDIA_BUS_FMT_UYVY8_1X16:
+	case MEDIA_BUS_FMT_UYVY8_2X8:
+		/* YUV422, UYVY */
+		fmt = 0x32;
+		break;
+	case MEDIA_BUS_FMT_YVYU8_1X16:
+	case MEDIA_BUS_FMT_YVYU8_2X8:
+		/* YUV422, YVYU */
+		fmt = 0x31;
+		break;
+	case MEDIA_BUS_FMT_YUYV8_1X16:
+	case MEDIA_BUS_FMT_YUYV8_2X8:
+		/* YUV422, YUYV */
+		fmt = 0x30;
+		break;
+	default:
+		pr_err("invalid fmt code %d\n", format->code);
+		return -EINVAL;
+	}
+
+	/* FORMAT CONTROL00: YUV and RGB formatting */
+	pr_info("set framefmt 0x%x", fmt);
+	ret = ov5640_write_reg(sensor, OV5640_REG_FORMAT_CONTROL00, fmt);
+
+	return ret;
+}
+
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0))
 static int ov5640_set_fmt(struct v4l2_subdev *sd,
 			struct v4l2_subdev_state *cfg,
@@ -308,7 +351,7 @@ static int ov5640_set_fmt(struct v4l2_subdev *sd,
 #endif
 {
 	struct ov5640 *ov5640 = to_ov5640(sd);
-	const struct ov5640_mode *mode;
+	const struct ov5640_mode *mode = NULL;
 	struct v4l2_mbus_framefmt *format;
 	unsigned int i,ret;
 
@@ -318,6 +361,11 @@ static int ov5640_set_fmt(struct v4l2_subdev *sd,
 				 ov5640_modes_num(ov5640),
 				width, height,
 				fmt->format.width, fmt->format.height);
+
+	if (NULL == mode) {
+		dev_err(ov5640->dev, "can not find proper mode for w %d h %d\n", fmt->format.width, fmt->format.height);
+		return -1;
+	}
 
 	fmt->format.width = mode->width;
 	fmt->format.height = mode->height;
@@ -365,13 +413,14 @@ static int ov5640_set_fmt(struct v4l2_subdev *sd,
 	mutex_unlock(&ov5640->lock);
 
 	/* Set init register settings */
-	ret = ov5640_set_register_array(ov5640, setting_2592_1944_2lane_672m_30fps,
-		ARRAY_SIZE(setting_2592_1944_2lane_672m_30fps));
+	ret = ov5640_set_register_array(ov5640, ov5640->current_mode->data, ov5640->current_mode->data_size);
 	if (ret < 0) {
 		dev_err(ov5640->dev, "Could not set init registers\n");
 		return ret;
 	} else
 		dev_err(ov5640->dev, "ov5640 linear mode init\n");
+
+	ov5640_set_framefmt(ov5640, format);
 
 	return 0;
 }
@@ -603,7 +652,7 @@ static int ov5640_ctrls_init(struct ov5640 *ov5640)
 {
 	int rtn = 0;
 
-	v4l2_ctrl_handler_init(&ov5640->ctrls, 4);
+	v4l2_ctrl_handler_init(&ov5640->ctrls, 6);
 
 	v4l2_ctrl_new_std(&ov5640->ctrls, &ov5640_ctrl_ops,
 				V4L2_CID_GAIN, 0, 0xF0, 1, 0);
@@ -728,7 +777,9 @@ int ov5640_init(struct i2c_client *client, void *sdrv)
 		goto free_entity;
 	}
 
-	dev_err(ov5640->dev, "probe ov5640 done\n");
+	ov5640_power_off(ov5640->dev, ov5640->gpio);
+
+	dev_err(ov5640->dev, "probe ov5640 done. power off state\n");
 
 	return 0;
 

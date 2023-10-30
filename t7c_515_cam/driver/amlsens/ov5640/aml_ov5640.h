@@ -78,6 +78,9 @@ struct ov5640_pixfmt {
 
 static const struct ov5640_pixfmt ov5640_formats[] = {
 	{ MEDIA_BUS_FMT_YUYV8_2X8, 1920, 2592, 1080, 1944, 8 },
+	{ MEDIA_BUS_FMT_UYVY8_2X8, 1920, 2592, 1080, 1944, 8 },
+	{ MEDIA_BUS_FMT_YVYU8_2X8, 1920, 2592, 1080, 1944, 8 },
+	{ MEDIA_BUS_FMT_VYUY8_2X8, 1920, 2592, 1080, 1944, 8 }
 };
 
 static const struct regmap_config ov5640_regmap_config = {
@@ -348,7 +351,7 @@ static struct ov5640_regval setting_1920_1080_2lane_672m_30fps[] = {
 	{0x3008, 0x02},
 };
 
-static struct ov5640_regval setting_2592_1944_2lane_672m_30fps[] = {
+static struct ov5640_regval setting_2592_1944_2lane_672m_15fps[] = {
 	{0x3103, 0x11},
 	{0x3008, 0x82},
 	{0x3008, 0x42},

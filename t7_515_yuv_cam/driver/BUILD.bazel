@@ -1,7 +1,7 @@
 load("//build/kernel/kleaf:kernel.bzl", "kernel_module")
 
 kernel_module(
-    name = "camera",
+    name = "yuv_camera",
     srcs = glob(
         ["**"],
         exclude = [
@@ -9,10 +9,7 @@ kernel_module(
         ],
     ),
     outs = [
-        "amlcam/amlcam.ko",
-        "amlsens/amlsens.ko",
-        "amlsens/amlsens-csi-a.ko",
-        "amlsens/amlsens-csi-b.ko",
+        "amlcam/amlogic-yuvcam-droid.ko",
     ],
     kernel_build = "//common:amlogic",
     visibility = [

@@ -141,6 +141,7 @@ static int isp_cap_irq_handler(void *video, int status)
 {
 	unsigned long flags;
 	struct aml_video *vd = video;
+	const int video_drop_frame_cnt = 3;
 
 	struct aml_buffer *b_current = vd->b_current;
 	struct isp_dev_t *isp_dev = vd->priv;
@@ -155,6 +156,17 @@ static int isp_cap_irq_handler(void *video, int status)
 		return 0;
 	}
 
+	// drop frame; multiple videos dq & q; open another video while one video is streaming
+	// the second opened video must drop some frames after streaming on,
+	// otherwise empty frame will be dequeued.
+	if (vd->frm_cnt < video_drop_frame_cnt) {
+		vd->frm_cnt++;
+		//pr_info("drop frame, vid %d, frm cnt %d", vd->id, vd->frm_cnt);
+		ops->hw_stream_cfg_buf(vd, b_current);
+		spin_unlock_irqrestore(&vd->buff_list_lock, flags);
+		return 0;
+	}
+
 	if (b_current) {
 		vd->frm_cnt++;
 		if (g_info->mode == AML_ISP_SCAM) {
@@ -165,12 +177,12 @@ static int isp_cap_irq_handler(void *video, int status)
 		}
 		t_current = list_first_entry_or_null(&vd->head, struct aml_buffer, list);
 		if ((t_current == NULL) && (vd->id > AML_ISP_STREAM_PARAM)) {
-			pr_debug("ISP%d video%d no buf %x %x\n", isp_dev->index, vd->id, b_current->addr[0], b_current->bsize);
+			pr_err("ISP%d video%d no buf %x %x\n", isp_dev->index, vd->id, b_current->addr[0], b_current->bsize);
 			ops->hw_stream_cfg_buf(vd, b_current);
 			spin_unlock_irqrestore(&vd->buff_list_lock, flags);
 			return 0;
 		}
-		b_current->vb.sequence = vd->frm_cnt;
+		b_current->vb.sequence = vd->frm_cnt - video_drop_frame_cnt;
 		b_current->vb.vb2_buf.timestamp = ktime_get_ns();
 		b_current->vb.field = V4L2_FIELD_NONE;
 		if (vd->id == AML_ISP_STREAM_PARAM ||

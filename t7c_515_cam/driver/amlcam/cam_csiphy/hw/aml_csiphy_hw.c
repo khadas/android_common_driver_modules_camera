@@ -220,7 +220,7 @@ static int csiphy_hw_start(void *c_dev, int idx, int lanes, s64 link_freq)
 	aphy_cfg(c_dev, idx, lanes, bps);
 	dphy_cfg(c_dev, idx, lanes, bps);
 	host_cfg(c_dev, idx, lanes - 1);
-	pr_info("CSIPHY%u: hw start\n", csiphy_dev->index);
+	pr_info("CSIPHY%u: hw start. bps %d Mbps lanes %d \n", csiphy_dev->index, bps, lanes);
 
 	return 0;
 }
