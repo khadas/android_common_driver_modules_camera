@@ -478,8 +478,9 @@ int imx335_power_on(struct device *dev, struct sensor_gpio *gpio)
 	int ret;
 
 	gpiod_set_value_cansleep(gpio->rst_gpio, 1);
-	gpiod_set_value_cansleep(gpio->pwdn_gpio, 1);
-
+	if (!IS_ERR_OR_NULL(gpio->pwdn_gpio)) {
+		gpiod_set_value_cansleep(gpio->pwdn_gpio, 1);
+	}
 	ret = mclk_enable(dev, 37125000);
 	if (ret < 0)
 		dev_err(dev, "set mclk fail\n");
@@ -494,8 +495,9 @@ int imx335_power_off(struct device *dev, struct sensor_gpio *gpio)
 	mclk_disable(dev);
 
 	gpiod_set_value_cansleep(gpio->rst_gpio, 0);
-	gpiod_set_value_cansleep(gpio->pwdn_gpio, 0);
-
+	if (!IS_ERR_OR_NULL(gpio->pwdn_gpio)) {
+		gpiod_set_value_cansleep(gpio->pwdn_gpio, 0);
+	}
 	return 0;
 }
 

@@ -114,7 +114,7 @@ static int sensor_parse_power(struct amlsens *sensor)
 	if (IS_ERR(sensor->gpio.pwdn_gpio)) {
 		rtn = PTR_ERR(sensor->gpio.pwdn_gpio);
 		dev_err(sensor->dev, "Cannot get pwdn gpio: %d\n", rtn);
-		goto err_return;
+		return 0;
 	}
 
 	sensor->gpio.power_gpio = devm_gpiod_get_optional(sensor->dev,

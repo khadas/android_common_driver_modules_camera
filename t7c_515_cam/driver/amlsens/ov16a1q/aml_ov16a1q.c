@@ -764,14 +764,17 @@ int ov16a1q_power_on(struct device *dev, struct sensor_gpio *gpio)
 {
 	int ret;
 
-	if (gpio->power_gpio)
+	if (!IS_ERR_OR_NULL(gpio->power_gpio))
 		gpiod_set_value_cansleep(gpio->power_gpio, 1);
 
 	// 30ms
 	usleep_range(100000, 101000);
 
 	gpiod_set_value_cansleep(gpio->rst_gpio, 1);
-	gpiod_set_value_cansleep(gpio->pwdn_gpio, 1);
+
+	if (!IS_ERR_OR_NULL(gpio->pwdn_gpio)) {
+		gpiod_set_value_cansleep(gpio->pwdn_gpio, 1);
+	}
 
 	ret = mclk_enable(dev, 24000000);
 	if (ret < 0 )
@@ -788,8 +791,12 @@ int ov16a1q_power_off(struct device *dev, struct sensor_gpio *gpio)
 	mclk_disable(dev);
 
 	gpiod_set_value_cansleep(gpio->rst_gpio,0);
-	gpiod_set_value_cansleep(gpio->pwdn_gpio, 0);
-	if (gpio->power_gpio)
+
+	if (!IS_ERR_OR_NULL(gpio->pwdn_gpio)) {
+		gpiod_set_value_cansleep(gpio->pwdn_gpio, 0);
+	}
+
+	if (!IS_ERR_OR_NULL(gpio->power_gpio))
 		gpiod_set_value_cansleep(gpio->power_gpio, 0);
 
 	return 0;
@@ -802,8 +809,11 @@ int ov16a1q_power_suspend(struct device *dev)
 	struct ov16a1q *ov16a1q = to_ov16a1q(sd);
 
 	gpiod_set_value_cansleep(ov16a1q->gpio->rst_gpio, 0);
-	gpiod_set_value_cansleep(ov16a1q->gpio->pwdn_gpio, 0);
-	if (ov16a1q->gpio->power_gpio)
+
+	if (!IS_ERR_OR_NULL(ov16a1q->gpio->pwdn_gpio))
+		gpiod_set_value_cansleep(ov16a1q->gpio->pwdn_gpio, 0);
+
+	if (!IS_ERR_OR_NULL(ov16a1q->gpio->power_gpio))
 		gpiod_set_value_cansleep(ov16a1q->gpio->power_gpio, 0);
 
 	return 0;
@@ -816,8 +826,11 @@ int ov16a1q_power_resume(struct device *dev)
 	struct ov16a1q *ov16a1q = to_ov16a1q(sd);
 
 	gpiod_set_value_cansleep(ov16a1q->gpio->rst_gpio, 1);
-	gpiod_set_value_cansleep(ov16a1q->gpio->pwdn_gpio, 1);
-	if (ov16a1q->gpio->power_gpio)
+
+	if (!IS_ERR_OR_NULL(ov16a1q->gpio->pwdn_gpio))
+		gpiod_set_value_cansleep(ov16a1q->gpio->pwdn_gpio, 1);
+
+	if (!IS_ERR_OR_NULL(ov16a1q->gpio->power_gpio))
 		gpiod_set_value_cansleep(ov16a1q->gpio->power_gpio, 1);
 
 	return 0;
