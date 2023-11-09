@@ -421,6 +421,29 @@ static int isp_subdev_set_format(void *priv, void *s_fmt, void *m_fmt)
 	return rtn;
 }
 
+int isp_subdev_pad_link_validate(void *priv, void *link, void *source_fmt, void * sink_fmt)
+{
+	struct isp_dev_t *isp_dev = priv;
+	struct v4l2_subdev_format *isp_source_fmt = source_fmt;
+	struct v4l2_subdev_format *isp_sink_fmt = sink_fmt;
+
+	if (isp_sink_fmt->format.code == MEDIA_BUS_FMT_YUYV8_2X8 ||
+		isp_sink_fmt->format.code == MEDIA_BUS_FMT_YVYU8_2X8) {
+		// isp input is YUYV (or YVYU)
+		// allow adapter output all 4 yuv422 format.
+		if (isp_source_fmt->format.code == MEDIA_BUS_FMT_YUYV8_2X8 ||
+			isp_source_fmt->format.code == MEDIA_BUS_FMT_YVYU8_2X8 ||
+			isp_source_fmt->format.code == MEDIA_BUS_FMT_VYUY8_2X8 ||
+			isp_source_fmt->format.code == MEDIA_BUS_FMT_UYVY8_2X8 )
+			return 0;
+		else
+			return -1;
+	}
+
+	// return ENOIOCTLCMD, lead to checked by  v4l2_subdev_link_validate_default.
+	return -ENOIOCTLCMD;
+}
+
 static int isp_subdev_stream_on(void *priv)
 {
 	struct isp_dev_t *isp_dev = priv;
@@ -485,6 +508,7 @@ static const struct aml_sub_ops isp_subdev_ops = {
 	.stream_on = isp_subdev_stream_on,
 	.stream_off = isp_subdev_stream_off,
 	.log_status = isp_subdev_log_status,
+	.pad_link_validate = isp_subdev_pad_link_validate,
 };
 
 static int isp_subdev_set_ctrl(struct v4l2_ctrl *ctrl)

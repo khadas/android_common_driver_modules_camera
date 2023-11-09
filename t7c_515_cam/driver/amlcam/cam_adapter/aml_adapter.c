@@ -59,6 +59,8 @@ static const struct aml_format adap_support_formats[] = {
 	{0, 0, 0, 0, MEDIA_BUS_FMT_SRGGB14_1X14, 0, 1, 14},
 	{0, 0, 0, 0, MEDIA_BUS_FMT_YUYV8_2X8, 0, 1, 8},
 	{0, 0, 0, 0, MEDIA_BUS_FMT_YVYU8_2X8, 0, 1, 8},
+	{0, 0, 0, 0, MEDIA_BUS_FMT_VYUY8_2X8, 0, 1, 8},
+	{0, 0, 0, 0, MEDIA_BUS_FMT_UYVY8_2X8, 0, 1, 8}
 };
 
 #if 0
@@ -631,7 +633,8 @@ static int adap_subdev_convert_fmt(struct adapter_dev_t *adap_dev,
 	break;
 	}
 
-	if ((format->code == MEDIA_BUS_FMT_YVYU8_2X8) || (format->code == MEDIA_BUS_FMT_YUYV8_2X8))
+	if ((format->code == MEDIA_BUS_FMT_YVYU8_2X8) || (format->code == MEDIA_BUS_FMT_YUYV8_2X8) ||
+		(format->code == MEDIA_BUS_FMT_UYVY8_2X8) || (format->code == MEDIA_BUS_FMT_VYUY8_2X8))
 		fmt = ADAP_YUV422_8BIT;
 
 	return fmt;
@@ -702,9 +705,68 @@ static int adap_subdev_set_format(void *priv, void *s_fmt, void *m_fmt)
 	struct v4l2_subdev_format *fmt = s_fmt;
 	struct v4l2_mbus_framefmt *format = m_fmt;
 
+	pr_info("set fmt pad =  0x%x\n", fmt->pad);
+
 	if (fmt->pad == AML_ADAP_PAD_SINK)
 		rtn = adap_subdev_hw_init(adap_dev, format);
 
+	if (fmt->pad == AML_ADAP_PAD_SRC) {
+
+		if (adap_dev->pfmt[AML_ADAP_PAD_SINK].width == 0 || adap_dev->pfmt[AML_ADAP_PAD_SINK].height == 0) {
+			dev_err(adap_dev->dev, "must set adap sink pad [0] first.\n");
+			return -1;
+		}
+
+		if (adap_dev->pfmt[AML_ADAP_PAD_SINK].code == MEDIA_BUS_FMT_YUYV8_2X8 ||
+			adap_dev->pfmt[AML_ADAP_PAD_SINK].code == MEDIA_BUS_FMT_YVYU8_2X8 ||
+			adap_dev->pfmt[AML_ADAP_PAD_SINK].code == MEDIA_BUS_FMT_UYVY8_2X8 ||
+			adap_dev->pfmt[AML_ADAP_PAD_SINK].code == MEDIA_BUS_FMT_VYUY8_2X8 )
+		{
+			// adapter input is yuv422.
+			// adapter output must be YUYV;
+			// convert all yuv422 to YUYV fmt via fe gen_ctrl1;
+
+			// example-1: sensor output Y1U Y2V. Y1 is reveiced firstly.
+			// 7  6 5 4    3 2  1 0-->  remap[7:0]    --> 7  6 5  4   3  2 1  0
+			// V Y2 U Y1   V Y2 U Y1 -> 00 11 10 01     -> Y1 V Y2 U   Y1 V Y2 U
+			// [7:6] din_byte3_sel 00 use received byte 0 as receiver's buf byte 3; Y1
+			// [5:4] din_byte2_sel 11 use received byte 3 as receiver's buf byte 2; Y1 V
+			// [3:2] din_byte1_sel 10 use received byte 2 as receiver's buf byte 1; Y1 V Y2
+			// [1:0] din_byte0_sel 11 use received byte 3 as receiver's buf byte 0; Y1 V Y2 U
+
+			// example-2 sensor output UY1 VY2. U is received firstly.
+			// Y2 V Y1 U   Y2 V Y1 U ->  01 10 11 00 --> Y1 V Y2 U  Y1 V Y2 U
+
+			// [ 3  2  1 0]
+			// [ Y1 V Y2 U]
+
+
+			// example-3 sensor output VY1 UY2. V is received firstly.
+			// Y2 U Y1 V   Y2 U Y1 V -> 11 10 01 00  --> Y2 U Y1 V    Y2 U Y1 V
+
+			// example-4 sensor output Y1V Y2U. Y1 is received firstly.
+			// U Y2 V Y1    U Y2 V Y1 -> 10 11 00 01 -->  Y2 U Y1 V   Y2 U Y1 V
+
+			// [ 3  2  1 0]
+			// [ Y2 U Y1 V ]
+			u32 byte_order = 0b11100100;
+			switch (adap_dev->pfmt[AML_ADAP_PAD_SINK].code)
+			{
+				case MEDIA_BUS_FMT_YUYV8_2X8: byte_order = 0b00111001; break;
+				case MEDIA_BUS_FMT_UYVY8_2X8: byte_order = 0b01101100; break;
+
+				case MEDIA_BUS_FMT_YVYU8_2X8: byte_order = 0b10110001; break;
+				case MEDIA_BUS_FMT_VYUY8_2X8: byte_order = 0b11100100; break;
+			}
+
+			dev_info(adap_dev->dev, "set byte order 0x%x\n", byte_order);
+
+			if (adap_dev->ops->hw_fe_set_byte_order)
+				adap_dev->ops->hw_fe_set_byte_order(adap_dev, byte_order);
+
+			format->code = MEDIA_BUS_FMT_YUYV8_2X8;
+		}
+	}
 	return rtn;
 }
 

@@ -161,6 +161,7 @@ struct aml_sub_ops {
 	int (*stream_on)(void *priv);
 	void (*stream_off)(void *priv);
 	void (*log_status)(void *priv);
+	int (*pad_link_validate)(void *priv, void *link, void *source_fmt, void * sink_fmt);
 };
 
 struct aml_subdev {

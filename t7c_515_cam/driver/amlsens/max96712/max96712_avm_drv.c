@@ -2,7 +2,7 @@
 /*
  * maxim max96712 quad GMSL2 deserializer driver
 */
-#ifndef pr_fmt
+#ifdef pr_fmt
 #undef pr_fmt
 #endif
 #define pr_fmt(fmt)  "[max96712]:%s:%d: " fmt, __func__, __LINE__
@@ -156,7 +156,7 @@ struct max96712_pixfmt {
 
 
 static struct max96712_pixfmt max96712_formats[] = {
-    { MEDIA_BUS_FMT_YVYU8_2X8, 1280, 1920, 800, 3200, 16 }
+    { MEDIA_BUS_FMT_UYVY8_2X8, 1280, 1920, 800, 3200, 16 }
 };
 
 static const s64 max96712_link_freq[] = {
@@ -1133,7 +1133,6 @@ static int max96712_set_pad_format(struct v4l2_subdev *sd,
         dev_err(&priv->client->dev, " No format. reset i = 0 \n");
     }
 
-    pr_info( " t7c, AVM fmt YVYU. isp need this;");
     fmt->format.code = max96712_formats[0].code;
 
     fmt->format.field = V4L2_FIELD_NONE;

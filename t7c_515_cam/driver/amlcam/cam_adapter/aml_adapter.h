@@ -224,6 +224,7 @@ struct adapter_dev_ops {
 	void (*hw_irq_dis)(void *a_dev);
 	void (*hw_offline_mode)(void *a_dev);
 	u32 *(*hw_fe_status)(void *a_dev);
+	void (*hw_fe_set_byte_order)(void *a_dev, u32 byte_order);
 };
 
 struct adapter_dev_t {

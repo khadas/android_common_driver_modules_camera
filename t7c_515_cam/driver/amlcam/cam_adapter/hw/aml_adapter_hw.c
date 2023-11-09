@@ -1459,6 +1459,32 @@ static void adap_fe_disable(struct aml_video *video)
 	adap_frontend_stop(video->priv);
 }
 
+static void adap_fe_set_byte_order(void *a_dev, u32 byte_order)
+{
+	struct adapter_dev_t *adap_dev = a_dev;
+	int module = FRONTEND_MD;
+
+	switch (adap_dev->index) {
+	case 0:
+		module = FRONTEND_MD;
+		break;
+	case 1:
+		module = FRONTEND1_MD;
+		break;
+	case 2:
+		module = FRONTEND2_MD;
+		break;
+	case 3:
+		module = FRONTEND3_MD;
+		break;
+	default:
+		break;
+	}
+
+	module_reg_write(a_dev, module, CSI2_GEN_CTRL1, byte_order);
+
+}
+
 static void adap_rd_enable(struct aml_video *video)
 {
 	adap_align_start(video->priv);
@@ -1631,4 +1657,5 @@ const struct adapter_dev_ops adap_dev_hw_ops = {
 	.hw_irq_dis = adap_hw_irq_disable,
 	.hw_offline_mode = adap_hw_offline,
 	.hw_fe_status = adap_fe_status,
+	.hw_fe_set_byte_order = adap_fe_set_byte_order,
 };

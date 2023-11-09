@@ -77,7 +77,7 @@ struct lt6911c_pixfmt {
 };
 
 static const struct lt6911c_pixfmt lt6911c_formats[] = {
-	{ MEDIA_BUS_FMT_YVYU8_2X8, 1920, 1920, 1080, 1080, 8 },
+	{ MEDIA_BUS_FMT_UYVY8_2X8, 1920, 1920, 1080, 1080, 8 },
 };
 
 static const struct regmap_config lt6911c_regmap_config = {
