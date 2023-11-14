@@ -651,6 +651,11 @@ static const struct dev_pm_ops cam_pm_ops = {
 };
 
 static const struct of_device_id cam_of_table[] = {
+#if  IS_ENABLED(CONFIG_AMLOGIC_FREERTOS)
+	{.compatible = "amlogic, camera-rtos"},
+#else
+	{.compatible = "amlogic, camera-droid"},
+#endif
 	{.compatible = "amlogic, camera"},
 	{ },
 };
@@ -667,7 +672,61 @@ static struct platform_driver cam_driver = {
 	},
 };
 
+#if  IS_ENABLED(CONFIG_AMLOGIC_FREERTOS)
+
+static int  driver_registered = 0; // 0 not registered. 1 registered.
+
+extern int register_freertos_notifier(struct notifier_block *nb);
+extern int unregister_freertos_notifier(struct notifier_block *nb);
+
+static int rtos_driver_event(struct notifier_block *this, unsigned long event, void *ptr)
+{
+	int32_t rc = 0;
+	printk("event = %d, amlcam isp platform add drv\n", event);
+
+	rc = platform_driver_register(&(cam_driver) );
+	driver_registered = 1;
+	return rc;
+}
+
+static struct notifier_block camera_notifier =
+{
+		.notifier_call = rtos_driver_event,
+};
+
+static int __init amlcam_drv_init(void)
+{
+	int err;
+	printk("amlcam isp driver register notifier\n");
+
+	err = register_freertos_notifier(&camera_notifier);
+	if (err)
+	{
+		printk("amlcam register_freertos_notifier error\n");
+		return -1;
+	}
+	printk("amlcam isp register_freertos_notifier completed\n");
+
+	return err;
+
+}
+
+static void __exit amlcam_drv_exit(void)
+{
+	unregister_freertos_notifier(&camera_notifier);
+	if (driver_registered) {
+		platform_driver_unregister(&(cam_driver) );
+	}
+}
+
+module_init(amlcam_drv_init);
+module_exit(amlcam_drv_exit);
+
+#else
+
 module_platform_driver(cam_driver);
+
+#endif
 
 MODULE_AUTHOR("Keke Li");
 MODULE_DESCRIPTION("Amlogic Camera Driver");

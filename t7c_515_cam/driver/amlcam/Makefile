@@ -48,8 +48,7 @@ $(MODULE_NAME)-y += cam_adapter/hw/aml_adapter_hw.o
 $(MODULE_NAME)-y += cam_csiphy/aml_csiphy.o
 $(MODULE_NAME)-y += cam_csiphy/hw/aml_csiphy_hw.o
 
-PR_FMT = $(subst amlogic-,,$(MODULE_NAME))
-PR_FMT_DEFINE="-Dpr_fmt(fmt)= \"[$(PR_FMT)]: \" fmt"
+PR_FMT_DEFINE="-Dpr_fmt(fmt)= \"[amlcam]: \" fmt"
 ccflags-y += $(PR_FMT_DEFINE)
 
 ccflags-y += -DT7C_CHIP -DANDROID_OS
