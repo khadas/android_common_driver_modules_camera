@@ -114,6 +114,10 @@ static int ov5640_set_register_array(struct ov5640 *ov5640,
 	int ret = 0;
 
 	for (i = 0; i < num_settings; ++i, ++settings) {
+		if (0xffff == settings->reg) {
+			msleep(settings->val);
+			continue;
+		}
 		ret = ov5640_write_reg(ov5640, settings->reg, settings->val);
 		if (ret < 0)
 			return ret;

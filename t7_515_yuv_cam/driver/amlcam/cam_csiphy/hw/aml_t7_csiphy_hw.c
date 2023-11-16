@@ -154,17 +154,17 @@ static int dphy_cfg(void *c_dev, u32 bps, int lanes)
 	case 0:
 		if (lanes == 2) {
 			mipi_reg_write(c_dev, module, MIPI_PHY_MUX_CTRL0 , 0x000001ff);      //config input mux
-			mipi_reg_write(c_dev, module, MIPI_PHY_MUX_CTRL1 , 0x000001ff);
+			mipi_reg_write(c_dev, module, MIPI_PHY_MUX_CTRL1 , 0x000201ff);
 		} else if (lanes == 4) {
 			mipi_reg_write(c_dev, module, MIPI_PHY_MUX_CTRL0 , 0x00000123); 	 //config input mux
-			mipi_reg_write(c_dev, module, MIPI_PHY_MUX_CTRL1 , 0x00000123);
+			mipi_reg_write(c_dev, module, MIPI_PHY_MUX_CTRL1 , 0x00020123);
 
 		}
 	break;
 	case 1:
 		if (lanes == 2) {
 			mipi_reg_write(c_dev, module, MIPI_PHY_MUX_CTRL0 , 0x000001ff);      //config input mux
-			mipi_reg_write(c_dev, module, MIPI_PHY_MUX_CTRL1 , 0x000001ff);
+			mipi_reg_write(c_dev, module, MIPI_PHY_MUX_CTRL1 , 0x000201ff);
 		} else if (lanes == 4) {
 #ifdef  CSI_B_USING_CLK_D
 			pr_info("722 use clk-1");
@@ -186,7 +186,7 @@ static int dphy_cfg(void *c_dev, u32 bps, int lanes)
 			mipi_reg_write(c_dev, module, MIPI_PHY_MUX_CTRL1 , 0x00010123);
 #else
 			mipi_reg_write(c_dev, module, MIPI_PHY_MUX_CTRL0 , 0x00000123); 	 //config input mux
-			mipi_reg_write(c_dev, module, MIPI_PHY_MUX_CTRL1 , 0x00000123);
+			mipi_reg_write(c_dev, module, MIPI_PHY_MUX_CTRL1 , 0x00020123);
 #endif
 		}
 	break;

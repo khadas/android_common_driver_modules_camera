@@ -410,6 +410,8 @@ static int adap_subdev_set_format(struct v4l2_subdev *sd,
 	*format = fmt->format;
 	format->field = V4L2_FIELD_NONE;
 
+	pr_info("pad %d w %d h %d  code %x", fmt->pad, format->width, format->height, format->code);
+
 	if (fmt->pad == AML_ADAP_PAD_SINK) {
 		rtn = adap_subdev_hw_init(adap_dev, format);
 	}

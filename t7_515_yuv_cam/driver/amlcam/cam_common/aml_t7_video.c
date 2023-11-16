@@ -154,39 +154,9 @@ static int video_set_fmt(struct file *file, void *fh, struct v4l2_format *fmt)
 	video->f_current = *fmt;
 	video->afmt = video->format[idx];
 
-	mutex_lock(&one_entry_lock);
-
-	// ===== begin set sensor first ==================
-	while (1) {
-		pad = &entity->pads[0];
-		pad = media_entity_remote_pad(pad);
-		if (!pad || !is_media_entity_v4l2_subdev(pad->entity))
-			break;
-
-		if (pad->flags & MEDIA_PAD_FL_SINK)
-			break;
-
-		entity = pad->entity;
-		sensor_subdev = media_entity_to_v4l2_subdev(entity);
-	}
-
-	if (sensor_subdev) {
-		struct v4l2_subdev_format fmt = { 0 };
-		fmt.which = V4L2_SUBDEV_FORMAT_ACTIVE;
-		fmt.format.width  = video->afmt.width;
-		fmt.format.height = video->afmt.height;
-		fmt.format.code   = video->afmt.code;
-
-		v4l2_subdev_call(sensor_subdev, pad, set_fmt, NULL, &fmt);
-	}
-	// ===== end set sensor first ==================
-
 	if (video->ops->cap_set_format) {
 		video->ops->cap_set_format(video);
 	}
-
-	mutex_unlock(&one_entry_lock);
-
 	return 0;
 }
 

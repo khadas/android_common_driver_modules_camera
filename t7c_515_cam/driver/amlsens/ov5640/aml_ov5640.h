@@ -92,6 +92,7 @@ static const struct regmap_config ov5640_regmap_config = {
 static struct ov5640_regval setting_1920_1080_2lane_672m_30fps[] = {
 	{0x3103, 0x11},
 	{0x3008, 0x82},
+	{0xffff, 0xa},
 	{0x3008, 0x42},
 	{0x3103, 0x03},
 	{0x3017, 0x00},
@@ -354,6 +355,7 @@ static struct ov5640_regval setting_1920_1080_2lane_672m_30fps[] = {
 static struct ov5640_regval setting_2592_1944_2lane_672m_15fps[] = {
 	{0x3103, 0x11},
 	{0x3008, 0x82},
+	{0xffff, 0xa},
 	{0x3008, 0x42},
 	{0x3103, 0x03},
 	{0x3017, 0x00},
