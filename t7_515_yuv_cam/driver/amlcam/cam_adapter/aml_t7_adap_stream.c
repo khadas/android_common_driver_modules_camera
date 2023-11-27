@@ -24,69 +24,111 @@
 #define  adap_isr_printk(str,...)  printk("[adap-irq] %5d - " str, __LINE__, ##__VA_ARGS__)
 
 static const struct aml_format adap_cap_support_format[] = {
-	{0, 0, MEDIA_BUS_FMT_VYUY8_2X8, V4L2_PIX_FMT_VYUY, 1, 16},
-	{0, 0, MEDIA_BUS_FMT_UYVY8_2X8, V4L2_PIX_FMT_UYVY, 1, 16},
-	{0, 0, MEDIA_BUS_FMT_YVYU8_2X8, V4L2_PIX_FMT_YVYU, 1, 16},
-	{0, 0, MEDIA_BUS_FMT_YUYV8_2X8, V4L2_PIX_FMT_YUYV, 1, 16}
+	{0, 0, 0, V4L2_PIX_FMT_YUYV, 1, 16},
+	{0, 0, 0, V4L2_PIX_FMT_YVYU, 1, 16},
+	{0, 0, 0, V4L2_PIX_FMT_UYVY, 1, 16},
+	{0, 0, 0, V4L2_PIX_FMT_VYUY, 1, 16},
 };
 
+static void adap_do_ge2d(struct ge2d_context_s *_context,
+	struct aml_buffer * src_buffer, struct aml_buffer * dst_buffer,
+	int src_w, int src_h, int dst_w, int dst_h) {
+	struct config_para_ex_s ge2d_config;
+	memset(&ge2d_config, 0, sizeof(struct config_para_ex_s));
+	ge2d_config.alu_const_color = 0;/*0x000000ff;*/
+	ge2d_config.bitmask_en = 0;
+	ge2d_config.src1_gb_alpha = 0;/*0xff;*/
+	ge2d_config.dst_xy_swap = 0;
+	ge2d_config.src_planes[0].addr = src_buffer->addr[AML_PLANE_A];
+	ge2d_config.src_planes[0].w = src_w;
+	ge2d_config.src_planes[0].h = src_h;
+
+	ge2d_config.src_para.format = GE2D_FORMAT_S16_YUV422;
+	ge2d_config.dst_planes[0].addr = (unsigned long)(dst_buffer->addr[AML_PLANE_A]);
+	ge2d_config.dst_planes[0].w = dst_w;
+	ge2d_config.dst_planes[0].h = dst_h;
+	ge2d_config.src_key.key_enable = 0;
+	ge2d_config.src_key.key_mask = 0;
+	ge2d_config.src_key.key_mode = 0;
+	ge2d_config.src_para.canvas_index = 0;
+	ge2d_config.src_para.mem_type = CANVAS_ALLOC;
+	ge2d_config.src_para.fill_color_en = 0;
+	ge2d_config.src_para.fill_mode = 0;
+	ge2d_config.src_para.x_rev = 0;
+	ge2d_config.src_para.y_rev = 0;
+	ge2d_config.src_para.color = 0xffffffff;
+	ge2d_config.src_para.top = 0;
+	ge2d_config.src_para.left = 0;
+	ge2d_config.src_para.width = src_w;
+	ge2d_config.src_para.height = src_h;
+	ge2d_config.src2_para.mem_type = CANVAS_TYPE_INVALID;
+	ge2d_config.dst_para.canvas_index = 0;
+	ge2d_config.dst_para.mem_type = CANVAS_ALLOC;
+	ge2d_config.dst_para.format = GE2D_FORMAT_S16_YUV422;
+	ge2d_config.dst_para.fill_color_en = 0;
+	ge2d_config.dst_para.fill_mode = 0;
+	ge2d_config.dst_para.x_rev = 0;
+	ge2d_config.dst_para.y_rev = 0;
+	ge2d_config.dst_xy_swap = 0;
+	ge2d_config.dst_para.color = 0;
+	ge2d_config.dst_para.top = 0;
+	ge2d_config.dst_para.left = 0;
+	ge2d_config.dst_para.width = dst_w;
+	ge2d_config.dst_para.height = dst_h;
+	if (ge2d_context_config_ex(_context, &ge2d_config) == 0) {
+		stretchblt_noalpha(_context, 0, 0, src_w,
+			src_h,
+			0, 0, dst_w,
+			dst_h);
+	}
+}
 // /dev/videoX
 // X is determined with adater idx and CAM_VIDEO_IDX_BEGIN_NUM (aml_t7_video.c)
 // X = CAM_VIDEO_IDX_BEGIN_NUM + video_start_idx_of_adapter[adapter_idx] + id
-static const int video_start_idx_of_adapter[] = {0,0};
+static const int video_start_idx_of_adapter[] = {0,5};
 
 static s64 endtime_ms = 0, begtime_ms = 0;
 
-static int adap_cap_irq_handler(void *video, int status)
+static int adap_cap_irq_handler(void *video, void * in_buff, u32 frm_cnt, u32 width, u32 height)
 {
-	unsigned long flags;
 	struct aml_video *vd = video;
-
 	struct aml_buffer *b_current_filled = vd->b_current;
 	struct aml_buffer *b_next_to_fill = NULL;
-
 	struct adapter_dev_t *adap_dev = vd->priv;
-	const struct adapter_dev_ops *ops = adap_dev->ops;
+	struct aml_buffer * in_ge2d_buffer = in_buff;
+	unsigned long flags;
 
 	spin_lock_irqsave(&vd->buff_list_lock, flags);
 
 	if (vd->status != AML_ON) {
 		spin_unlock_irqrestore(&vd->buff_list_lock, flags);
-		adap_isr_printk("err not stream on\n");
 		return 0;
 	}
 
-	// step 1: get from free list. next buf to fill..
 	b_next_to_fill = list_first_entry_or_null(&vd->head, struct aml_buffer, list);
 
-	// step 2:report buf done &  set new hw addr to fill.
-	if (b_next_to_fill) {
-		if (b_current_filled) {
-			vd->frm_cnt++;
-			if ( (vd->frm_cnt % 100) == 0 ) {
-				endtime_ms = ktime_to_ms( ktime_get() );
-				if (endtime_ms > begtime_ms) {
-					adap_isr_printk("adap fps - 100 frames %ld ms\n", (endtime_ms - begtime_ms) );
-				}
-				begtime_ms = endtime_ms;
-			}
-			b_current_filled->vb.sequence = vd->frm_cnt;
+	if (!b_next_to_fill)
+		adap_isr_printk("no free buf. drop frame, video id %d", vd->id);
+	else
+	{
+		if (!b_current_filled)
+			adap_isr_printk("free buf. no filled buf.");
+		else
+		{
+			spin_unlock_irqrestore(&vd->buff_list_lock, flags);
+			adap_do_ge2d(adap_dev->context_ge2d, in_ge2d_buffer, b_current_filled, width,
+				height,  vd->afmt.width,  vd->afmt.height);
+			spin_lock_irqsave(&vd->buff_list_lock, flags);
+			b_current_filled->vb.sequence = frm_cnt;
 			b_current_filled->vb.vb2_buf.timestamp = ktime_get_ns();
 			b_current_filled->vb.field = V4L2_FIELD_NONE;
 			vb2_buffer_done(&b_current_filled->vb.vb2_buf, VB2_BUF_STATE_DONE);
-		} else {
-			adap_isr_printk("free buf. no filled buf.\n");
 		}
 		vd->b_current = b_next_to_fill;
-		ops->hw_stream_cfg_buf(vd, vd->b_current);
-		list_del(&vd->b_current->list);
-
-	} else {
-		adap_isr_printk("no free buf. drop frame, video id %d\n", vd->id);
+		if (!list_empty(&vd->head))
+			list_del(&vd->b_current->list);
 	}
-
 	spin_unlock_irqrestore(&vd->buff_list_lock, flags);
-
 	return 0;
 }
 
@@ -101,8 +143,14 @@ static int adap_cap_set_format(void *video)
 
 	dev_err(vd->dev, "video adap stream set fmt\n");
 
-	if (ops && ops->hw_stream_set_fmt) {
-		rtn = ops->hw_stream_set_fmt(video, fmt);
+	fmt->width = vd->f_current.fmt.pix.width;
+	fmt->height = vd->f_current.fmt.pix.height;
+	fmt->fourcc = vd->f_current.fmt.pix.pixelformat;
+	for (i = 0; i < vd->fmt_cnt; i++) {
+		if (fmt->fourcc == vd->format[i].fourcc) {
+			fmt->bpp = vd->format[i].bpp;
+			break;
+		}
 	}
 
 	return rtn;
@@ -126,10 +174,7 @@ static int adap_cap_cfg_buffer(void *video, void *buff)
 	}
 	// set vd->b_current.for the next time adap_cap_cfg_buffer is called.
 	// vd->b_current is true. will list_add_tail.
-	if (ops && ops->hw_stream_cfg_buf) {
-		rtn = ops->hw_stream_cfg_buf(video, buff);
-		vd->b_current = buff;
-	}
+	vd->b_current = buff;
 
 	spin_unlock_irqrestore(&vd->buff_list_lock, flags);
 
@@ -142,10 +187,8 @@ static void adap_cap_stream_on(void *video)
 	struct adapter_dev_t *adap_dev = vd->priv;
 	const struct adapter_dev_ops *ops = adap_dev->ops;
 
-	if (ops && ops->hw_stream_on)
-		ops->hw_stream_on(video);
-
 	vd->status = AML_ON;
+	dev_err(vd->dev, "video adap stream on\n");
 }
 
 static void adap_cap_stream_off(void *video)
@@ -153,9 +196,6 @@ static void adap_cap_stream_off(void *video)
 	struct aml_video *vd = video;
 	struct adapter_dev_t *adap_dev = vd->priv;
 	const struct adapter_dev_ops *ops = adap_dev->ops;
-
-	if (ops && ops->hw_stream_off)
-		ops->hw_stream_off(video);
 
 	vd->status = AML_OFF;
 }
@@ -193,6 +233,7 @@ static void adap_cap_flush_buffer(void *video)
 	vd->b_current = NULL;
 
 	spin_unlock_irqrestore(&vd->buff_list_lock, flags);
+	mdelay(33);
 }
 
 static const struct aml_cap_ops adap_cap_ops = {

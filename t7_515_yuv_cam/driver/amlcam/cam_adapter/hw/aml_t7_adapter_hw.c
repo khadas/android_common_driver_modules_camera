@@ -274,7 +274,7 @@ static int adap_frontend_init(void *a_dev)
 
 
 	module_reg_write(a_dev, module, CSI2_DDR_STRIDE_PIX_B,
-				param->fe_param.fe_mem_line_stride << 4);
+				param->fe_param.fe_isp_line_stride << 4);
 	module_reg_write(a_dev, module, CSI2_DDR_START_PIX_B, 0x00000000);
 	module_reg_write(a_dev, module, CSI2_DDR_START_PIX_B_ALT, 0x00000000);
 
@@ -288,7 +288,7 @@ static int adap_frontend_init(void *a_dev)
 				cfg_line_sup_vs_sel << 15 |
 				cfg_line_sup_vs_en << 16 |
 				cfg_line_sup_sel << 17 |
-				param->fe_param.fe_mem_line_minbyte << 0);
+				((param->fe_param.fe_mem_line_minbyte > param->fe_param.fe_isp_line_minbyte) ? param->fe_param.fe_mem_line_minbyte : param->fe_param.fe_isp_line_minbyte) << 0);
 
 	module_reg_write(a_dev, module, CSI2_VC_MODE, vc_mode);
 
@@ -413,13 +413,11 @@ static void adap_module_top_pending_mask(void *a_dev, u32 val)
 
 static void adap_module_top_de_bypass(void *a_dev)
 {
-	// bit 3: de axi rd bus bypass enabled.
 	module_update_bits(a_dev, ISPTOP_MD, MIPI_TOP_ADAPT_DE_CTRL0, 0x1, 3, 1);
-	// bit 7: de axi wr bus bypass enabled.
 	module_update_bits(a_dev, ISPTOP_MD, MIPI_TOP_ADAPT_DE_CTRL0, 0x1, 7, 1);
 }
 
-/*================= adapter hardware cfg interface ========================*/
+/* adapter hardware cfg interface */
 
 static int adap_hw_init(void *a_dev)
 {
@@ -430,19 +428,26 @@ static int adap_hw_init(void *a_dev)
 	param->fe_param.fe_sel = adap_dev->index;
 	param->fe_param.fe_work_mode = param->mode;
 	param->fe_param.fe_mem_x_start = 0;
-	param->fe_param.fe_mem_x_end = param->width - 1;
+	param->fe_param.fe_mem_x_end = param->mem_path_width - 1;
 	param->fe_param.fe_mem_y_start = 0;
-	param->fe_param.fe_mem_y_end = param->height - 1;
+	param->fe_param.fe_mem_y_end = param->mem_path_height - 1;
 	param->fe_param.fe_isp_x_start = 0 ;
-	param->fe_param.fe_isp_x_end = param->width - 1;
+	param->fe_param.fe_isp_x_end = param->isp_path_width - 1;
 	param->fe_param.fe_isp_y_start = 0;
-	param->fe_param.fe_isp_y_end = param->height - 1;
+	param->fe_param.fe_isp_y_end = param->isp_path_height - 1;
 
 	param->fe_param.fe_mem_line_stride =
-		ceil_upper((adap_get_pixel_depth(param) * param->width), (8 * 16));
+		ceil_upper((adap_get_pixel_depth(param) * param->mem_path_width), (8 * 16));
+
+	param->fe_param.fe_isp_line_stride =
+		ceil_upper((adap_get_pixel_depth(param) * param->isp_path_width), (8 * 16));
 
 	param->fe_param.fe_mem_line_minbyte =
-		(adap_get_pixel_depth(param) * param->width + 7) >> 3;
+		(adap_get_pixel_depth(param) * param->mem_path_width + 7) >> 3;
+
+	param->fe_param.fe_isp_line_minbyte =
+		(adap_get_pixel_depth(param) * param->isp_path_width + 7) >> 3;
+
 	// interrupt enable: bit 2 for mem2ddr path wr done; bit 5 for isp2ddr wrdone
 	param->fe_param.fe_int_mask = 0x24;
 
@@ -461,112 +466,30 @@ static int adap_hw_stream_set_fmt(struct aml_video *video, struct aml_format *fm
 	return 0;
 }
 
-static int adap_hw_stream_cfg_buf(struct aml_video *video, struct aml_buffer *buff)
+static int adap_hw_stream_cfg_buf(void *a_dev, struct aml_buffer *buff, int path)
 {
 	int module = FRONTEND_MD;
-	struct adapter_dev_t *adap_dev = video->priv;
-
-
-	//pr_info("in, adap index %d, video id %d\n", adap_dev->index, video->id);
-
-	switch (adap_dev->index) {
-		case 0:
-		{
-			switch (video->id) {
-				case 0:
-					adap_frontend_cfg_buf(adap_dev, buff, AML_ADAP_MEM_PATH);
-				break;
-				case 1:
-					adap_frontend_cfg_buf(adap_dev, buff, AML_ADAP_ISP_PATH);
-				break;
-			}
-		} break;
-
-		case 1:
-		{
-			switch (video->id) {
-				case 0:
-					adap_frontend_cfg_buf(adap_dev, buff, AML_ADAP_MEM_PATH);
-				break;
-				case 1:
-					adap_frontend_cfg_buf(adap_dev, buff, AML_ADAP_ISP_PATH);
-				break;
-			}
-		} break;
-	}
+	struct adapter_dev_t *adap_dev = a_dev;
+	adap_frontend_cfg_buf(adap_dev, buff, path);
 	return 0;
 }
 
-static void adap_hw_stream_on(struct aml_video *video)
+static void adap_hw_stream_on(void *a_dev)
 {
-	struct adapter_dev_t *adap_dev = video->priv;
-	pr_info("in, adap index %d, video id %d\n", adap_dev->index, video->id);
-
-	switch (adap_dev->index) {
-		case 0:
-		{
-			switch (video->id) {
-				case 0:
-					adap_frontend_start(adap_dev, AML_ADAP_MEM_PATH);
-				break;
-				case 1:
-					adap_frontend_start(adap_dev, AML_ADAP_ISP_PATH);
-				break;
-			}
-
-		} break;
-
-		case 1:
-		{
-			switch (video->id) {
-				case 0:
-					adap_frontend_start(adap_dev, AML_ADAP_MEM_PATH);
-				break;
-				case 1:
-					adap_frontend_start(adap_dev, AML_ADAP_ISP_PATH);
-				break;
-			}
-
-		} break;
-	}
-
+	struct adapter_dev_t *adap_dev = a_dev;
+	adap_frontend_start(adap_dev, AML_ADAP_MEM_PATH);
+	adap_frontend_start(adap_dev, AML_ADAP_ISP_PATH);
 	pr_info("Success adap hw stream on\n");
 
 }
 
-static void adap_hw_stream_off(struct aml_video *video)
+static void adap_hw_stream_off(void *a_dev)
 {
 
-	struct adapter_dev_t *adap_dev = video->priv;
+	struct adapter_dev_t *adap_dev = a_dev;
+	adap_frontend_stop(adap_dev, AML_ADAP_ISP_PATH);
+	adap_frontend_stop(adap_dev, AML_ADAP_MEM_PATH);
 
-	pr_info("in, adap index %d, video id %d\n", adap_dev->index, video->id);
-
-	switch (adap_dev->index) {
-		case 0:
-		{
-			switch (video->id) {
-				case 0:
-					adap_frontend_stop(adap_dev, AML_ADAP_MEM_PATH);
-				break;
-				case 1:
-					adap_frontend_stop(adap_dev, AML_ADAP_ISP_PATH);
-				break;
-			}
-
-		} break;
-
-		case 1:
-		{
-			switch (video->id) {
-				case 0:
-					adap_frontend_stop(adap_dev, AML_ADAP_MEM_PATH);
-				break;
-				case 1:
-					adap_frontend_stop(adap_dev, AML_ADAP_ISP_PATH);
-				break;
-			}
-		} break;
-	}
 	pr_info("Success adap hw stream off\n");
 }
 
@@ -604,9 +527,9 @@ void adap_hw_dump_reg(struct adapter_dev_t *ctx)
 	int i = 0;
 
 
-	pr_err( "begin	=  dump adap hw regs\n");
+	pr_err( "begin  =  dump adap hw regs\n");
 
-	pr_err( "begin	=  isp \n");
+	pr_err( "begin  =  isp \n");
 	module_reg_read( ctx, ISPTOP_MD, MIPI_TOP_ADAPT_DE_CTRL0 , &val);
 	pr_err( "addr 0x%08x, val 0x%08x \n", MIPI_TOP_ADAPT_DE_CTRL0, val);
 	module_reg_read( ctx, ISPTOP_MD, MIPI_TOP_ISP_PENDING_MASK0 , &val);
@@ -620,7 +543,7 @@ void adap_hw_dump_reg(struct adapter_dev_t *ctx)
 		pr_err( "addr 0x%08x, val 0x%08x \n", addr, val);
 	}
 
-	pr_err( "end	== dump adap hw regs\n");
+	pr_err( "end    == dump adap hw regs\n");
 }
 
 

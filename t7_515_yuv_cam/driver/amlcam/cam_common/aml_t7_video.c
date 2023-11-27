@@ -45,27 +45,24 @@ static struct cam_device * video_to_cam_device(struct aml_video *video)
 	return cam_dev;
 }
 
-
-static int video_match_fmt(struct aml_video *video, struct v4l2_format *fmt)
+// 0     - ok
+// other - fail
+static int video_match_fmt(struct aml_video *video, struct v4l2_format *fmt, int* index)
 {
-	int index = 0;
-	int found = 0;
+	int i = 0;
+	int rtn = -EINVAL;
 
-	for (index = 0; index < video->fmt_cnt; index++) {
-		if (fmt->fmt.pix.pixelformat == video->format[index].fourcc) {
-			found = 1;
+	*index = 0;
+	for (i = 0; i < video->fmt_cnt; i++) {
+		if (fmt->fmt.pix.pixelformat == video->format[i].fourcc) {
+			*index = i;
+			rtn = 0;
 			break;
 		}
 	}
 
-	if (!found) {
-		dev_err(video->dev, " match fmt failed. reset to idx 0\n");
-		index = 0;
-	}
-
-	return index;
+	return rtn;
 }
-
 
 static void video_init_fmt(struct aml_video *video)
 {
@@ -80,8 +77,8 @@ static void video_init_fmt(struct aml_video *video)
 	fmt.fmt.pix.pixelformat = video->format[0].fourcc;
 	fmt.fmt.pix.colorspace = V4L2_COLORSPACE_SRGB;
 	fmt.fmt.pix.sizeimage = fmt.fmt.pix.width *
-					fmt.fmt.pix.height *
-					video->format[0].bpp / 8;
+		fmt.fmt.pix.height *
+		video->format[0].bpp / 8;
 
 	video->f_current = fmt;
 }
@@ -128,53 +125,52 @@ static int video_get_fmt(struct file *file, void *fh, struct v4l2_format *fmt)
 
 static int video_set_fmt(struct file *file, void *fh, struct v4l2_format *fmt)
 {
-	int idx = 0;
-	struct media_pad *pad = NULL;
-	struct v4l2_subdev *subdev = NULL;
-	struct v4l2_subdev *sensor_subdev = NULL;
-
+	int rtn = 0;
 	struct aml_video *video = video_drvdata(file);
-	struct media_entity *entity = &video->vdev.entity;
-
 	dev_err(video->dev, "video set fmt\n");
+	int index;
 
 	if (vb2_is_busy(&video->vb2_q))
 		return -EBUSY;
 
-	idx = video_match_fmt(video, fmt);
-
-	fmt->fmt.pix.sizeimage = fmt->fmt.pix.width *
-					fmt->fmt.pix.height *
-					video->format[idx].bpp / 8;
+	rtn = video_match_fmt(video, fmt, &index);
+	if (rtn) {
+		dev_err(video->dev, " verify fmt failed. reset to idx 0\n");
+	}
 	fmt->type = video->type;
 	fmt->fmt.pix.field = V4L2_FIELD_NONE;
-	fmt->fmt.pix.pixelformat = video->format[idx].fourcc;
+	fmt->fmt.pix.pixelformat = video->format[index].fourcc;
 	fmt->fmt.pix.colorspace = V4L2_COLORSPACE_SRGB;
+	fmt->fmt.pix.sizeimage = fmt->fmt.pix.width *
+		fmt->fmt.pix.height *
+		video->format[index].bpp / 8;
 
 	video->f_current = *fmt;
-	video->afmt = video->format[idx];
 
 	if (video->ops->cap_set_format) {
 		video->ops->cap_set_format(video);
 	}
+
 	return 0;
 }
 
 static int video_try_fmt(struct file *file, void *fh, struct v4l2_format *fmt)
 {
-	int idx = 0;
+	int rtn = 0;
 	struct aml_video *video = video_drvdata(file);
+	int index;
 
-	idx = video_match_fmt(video, fmt);
-
-	fmt->fmt.pix.sizeimage = fmt->fmt.pix.width *
-					fmt->fmt.pix.height *
-					video->format[idx].bpp / 8;
+	rtn = video_match_fmt(video, fmt, &index);
+	if (rtn) {
+		dev_err(video->dev, " verify fmt failed. reset to idx 0\n");
+	}
 	fmt->type = video->type;
 	fmt->fmt.pix.field = V4L2_FIELD_NONE;
-	fmt->fmt.pix.pixelformat = video->format[idx].fourcc;
+	fmt->fmt.pix.pixelformat = video->format[index].fourcc;
 	fmt->fmt.pix.colorspace = V4L2_COLORSPACE_SRGB;
-
+	fmt->fmt.pix.sizeimage = fmt->fmt.pix.width *
+		fmt->fmt.pix.height *
+		video->format[index].bpp / 8;
 
 	return 0;
 }
@@ -238,25 +234,25 @@ int video_ioctl_dqbuf(struct file *file, void *priv, struct v4l2_buffer *p)
 
 
 static const struct v4l2_ioctl_ops aml_v4l2_ioctl_ops = {
-	.vidioc_querycap		= video_querycap,
-	.vidioc_enum_fmt_vid_cap	= video_enum_fmt,
-	.vidioc_g_fmt_vid_cap		= video_get_fmt,
-	.vidioc_s_fmt_vid_cap		= video_set_fmt,
-	.vidioc_try_fmt_vid_cap		= video_try_fmt,
-	.vidioc_reqbufs			= vb2_ioctl_reqbufs,
-	.vidioc_querybuf		= vb2_ioctl_querybuf,
-	.vidioc_qbuf			= video_ioctl_qbuf,
-	.vidioc_expbuf			= vb2_ioctl_expbuf,
-	.vidioc_dqbuf			= video_ioctl_dqbuf,
-	.vidioc_prepare_buf		= vb2_ioctl_prepare_buf,
-	.vidioc_create_bufs		= vb2_ioctl_create_bufs,
+	.vidioc_querycap        = video_querycap,
+	.vidioc_enum_fmt_vid_cap    = video_enum_fmt,
+	.vidioc_g_fmt_vid_cap       = video_get_fmt,
+	.vidioc_s_fmt_vid_cap       = video_set_fmt,
+	.vidioc_try_fmt_vid_cap     = video_try_fmt,
+	.vidioc_reqbufs         = vb2_ioctl_reqbufs,
+	.vidioc_querybuf        = vb2_ioctl_querybuf,
+	.vidioc_qbuf            = video_ioctl_qbuf,
+	.vidioc_expbuf          = vb2_ioctl_expbuf,
+	.vidioc_dqbuf           = video_ioctl_dqbuf,
+	.vidioc_prepare_buf     = vb2_ioctl_prepare_buf,
+	.vidioc_create_bufs     = vb2_ioctl_create_bufs,
 	.vidioc_g_selection             = video_g_selection,
 	.vidioc_s_selection             = video_s_selection,
-	.vidioc_streamon		= vb2_ioctl_streamon,
-	.vidioc_streamoff		= vb2_ioctl_streamoff,
-	.vidioc_log_status		= v4l2_ctrl_log_status,
-	.vidioc_subscribe_event		= v4l2_ctrl_subscribe_event,
-	.vidioc_unsubscribe_event	= v4l2_event_unsubscribe,
+	.vidioc_streamon        = vb2_ioctl_streamon,
+	.vidioc_streamoff       = vb2_ioctl_streamoff,
+	.vidioc_log_status      = v4l2_ctrl_log_status,
+	.vidioc_subscribe_event     = v4l2_ctrl_subscribe_event,
+	.vidioc_unsubscribe_event   = v4l2_event_unsubscribe,
 };
 
 static int video_buff_queue_setup(struct vb2_queue *queue,
@@ -268,8 +264,8 @@ static int video_buff_queue_setup(struct vb2_queue *queue,
 	struct aml_video *video = queue->drv_priv;
 	const struct v4l2_pix_format *pix = &video->f_current.fmt.pix;
 
-    dev_err(video->dev,
-        "%s ++ , \n", __func__);
+	dev_err(video->dev,
+		"%s ++ , \n", __func__);
 
 	if (*num_planes) {
 		if (sizes[0] < pix->sizeimage)
@@ -326,8 +322,8 @@ static int video_buff_init(struct vb2_buffer *vb)
 	buff->addr[AML_PLANE_A] = *((u32 *)vb2_plane_cookie(vb, 0));
 	buff->vaddr[AML_PLANE_A] = vb2_plane_vaddr(vb, 0);
 
-    dev_err(video->dev,
-        "%s ++ , addr 0x%x, vaddr 0x%p\n", __func__, buff->addr[AML_PLANE_A], buff->vaddr[AML_PLANE_A]);
+	dev_err(video->dev,
+		"%s ++ , addr 0x%x, vaddr 0x%p\n", __func__, buff->addr[AML_PLANE_A], buff->vaddr[AML_PLANE_A]);
 
 	if (pix->pixelformat == V4L2_PIX_FMT_NV12 ||
 			pix->pixelformat == V4L2_PIX_FMT_NV21) {

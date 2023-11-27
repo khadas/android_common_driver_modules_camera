@@ -58,11 +58,12 @@ struct aml_buffer {
 	void *vaddr[AML_PLANE_MAX];
 	dma_addr_t addr[AML_PLANE_MAX];
 	int flag;
+	u32 bsize;
 	struct list_head list;
 };
 
 struct aml_cap_ops {
-	int (*cap_irq_handler)(void *video, int status);
+	int (*cap_irq_handler)(void *video, void * in_buff, u32 frm_cnt, u32 width, u32 height);
 	int (*cap_set_format)(void *video);
 	int (*cap_cfg_buffer)(void *video, void *buff);
 	void (*cap_stream_on)(void *video);

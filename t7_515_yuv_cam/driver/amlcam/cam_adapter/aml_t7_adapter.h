@@ -20,6 +20,7 @@
 #ifndef __AML_T7_ADAPTER_H__
 #define __AML_T7_ADAPTER_H__
 
+#include <linux/amlogic/media/ge2d/ge2d.h>
 #include <linux/device.h>
 #include <linux/platform_device.h>
 #include <linux/clk-provider.h>
@@ -28,6 +29,8 @@
 #include <media/v4l2-subdev.h>
 #include <media/v4l2-device.h>
 #include <media/media-entity.h>
+#include <linux/kfifo.h>
+#include <linux/delay.h>
 
 #include "aml_t7_video.h"
 
@@ -46,13 +49,18 @@ enum {
 	AML_ADAP_PAD_SINK = 0,
 	AML_ADAP_PAD_SRC,
 	AML_ADAP_PAD_SRC_1,
+	AML_ADAP_PAD_SRC_2,
+	AML_ADAP_PAD_SRC_3,
 	AML_ADAP_PAD_MAX,
 };
 
 enum {
-	AML_ADAP_STREAM_FIRST_VC0,
-	AML_ADAP_STREAM_FIRST_VC1,
-	AML_ADAP_STREAM_MAX
+	AML_ADAP_STREAM_FIRST_VC0_0,
+	AML_ADAP_STREAM_FIRST_VC0_1,
+	AML_ADAP_STREAM_FIRST_VC0_MAX,
+	AML_ADAP_STREAM_FIRST_VC1_0 = AML_ADAP_STREAM_FIRST_VC0_MAX,
+	AML_ADAP_STREAM_FIRST_VC1_1,
+	AML_ADAP_STREAM_MAX,
 };
 
 enum {
@@ -116,18 +124,30 @@ struct fe_param_t{
    int fe_mem_other_addr;
    int fe_mem_line_stride;
    int fe_mem_line_minbyte;
+   int fe_isp_line_stride;
+   int fe_isp_line_minbyte;
+
    int fe_int_mask;
 };
 
 struct adapter_dev_param {
 	int path;
 	int mode;
-	u32 width;
-	u32 height;
+	u32 isp_path_width;
+	u32 isp_path_height;
+	u32 mem_path_width;
+	u32 mem_path_height;
 	int format;
 	int dol_type;
 	struct fe_param_t fe_param;
 	struct adap_exp_offset offset;
+	struct aml_buffer mem_path_buf[3];
+	struct aml_buffer isp_path_buf[3];
+	struct aml_buffer *cur_mem_buf;
+	struct aml_buffer *cur_isp_buf;
+	struct list_head mem_path_list;
+	struct list_head isp_path_list;
+	struct spinlock ddr_lock;
 };
 
 struct adapter_dev_ops {
@@ -138,9 +158,14 @@ struct adapter_dev_ops {
 	u32 (*hw_get_interrupt_status)(void *a_dev);
 
 	int (*hw_stream_set_fmt)(struct aml_video *video, struct aml_format *fmt);
-	int (*hw_stream_cfg_buf)(struct aml_video *video, struct aml_buffer *buff);
-	void (*hw_stream_on)(struct aml_video *video);
-	void (*hw_stream_off)(struct aml_video *video);
+	int (*hw_stream_cfg_buf)(void *a_dev, struct aml_buffer *buff, int path);
+	void (*hw_stream_on)(void *a_dev);
+	void (*hw_stream_off)(void *a_dev);
+};
+
+struct adapter_workqueue_t {
+	struct work_struct work_obj;
+	struct kfifo adap_fifo_out;
 };
 
 struct adapter_dev_t {
@@ -163,6 +188,8 @@ struct adapter_dev_t {
 	struct media_pad pads[AML_ADAP_PAD_MAX];
 	struct v4l2_mbus_framefmt pfmt[AML_ADAP_PAD_MAX];
 	unsigned int fmt_cnt;
+	unsigned int mem_frm_cnt;
+	unsigned int isp_frm_cnt;
 	const struct aml_format *formats;
 	struct v4l2_device *v4l2_dev;
 	struct media_pipeline pipe;
@@ -172,6 +199,14 @@ struct adapter_dev_t {
 
 	struct aml_video video[AML_ADAP_STREAM_MAX];
 	int is_streaming;
+	struct ge2d_context_s * context_ge2d;
+	struct adapter_workqueue_t* adapter_wq;
+};
+struct adapter_task_t {
+	struct adapter_dev_t* adapter_dev;
+	struct aml_buffer* src_buffer;
+	u32 frm_cnt;
+	int path_select;
 };
 
 int aml_adap_subdev_init(void *c_dev);

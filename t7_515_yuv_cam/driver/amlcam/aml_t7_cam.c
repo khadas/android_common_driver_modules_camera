@@ -353,7 +353,7 @@ void cam_debug_mipi_dump(struct cam_device *cam_dev)
 int cam_debug_mipi_off(struct cam_device *cam_dev)
 {
 	// stream off
-	cam_dev->adap_dev.ops->hw_stream_off( &( cam_dev->adap_dev.video[0]) );
+	cam_dev->adap_dev.ops->hw_stream_off(&(cam_dev->adap_dev));
 	cam_dev->adap_dev.ops->hw_stop(&(cam_dev->adap_dev) );
 
 	// deinit
@@ -370,9 +370,10 @@ int cam_debug_mipi_on(struct cam_device *cam_dev)
 
 	// stream on
 	cam_dev->adap_dev.ops->hw_start(&(cam_dev->adap_dev) );
-	cam_dev->adap_dev.ops->hw_stream_on( &( cam_dev->adap_dev.video[0]) );
+	cam_dev->adap_dev.ops->hw_stream_on(&(cam_dev->adap_dev));
 
 	cam_dev->csiphy_dev.ops->hw_start(&(cam_dev->csiphy_dev), cam_dev->csiphy_dev.mipi_data_lanes, cam_dev->csiphy_dev.mipi_link_freq);
+	cam_dev->adap_dev.is_streaming = 1;
 
 #ifdef DEBUG_TEST_MIPI_RESET
 	debug_test_mipi_reset = 0;
