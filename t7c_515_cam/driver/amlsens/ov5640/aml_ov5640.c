@@ -308,6 +308,7 @@ static int ov5640_set_framefmt(struct ov5640 *sensor,
 			       struct v4l2_mbus_framefmt *format)
 {
 	int ret = 0;
+	int retry = 0;
 
 	u8 fmt = 0x33;
 
@@ -338,8 +339,17 @@ static int ov5640_set_framefmt(struct ov5640 *sensor,
 	}
 
 	/* FORMAT CONTROL00: YUV and RGB formatting */
-	pr_info("set framefmt 0x%x", fmt);
-	ret = ov5640_write_reg(sensor, OV5640_REG_FORMAT_CONTROL00, fmt);
+	for (retry = 0; retry < 5; ++retry) {
+		u8 reg_val = 0x0;
+		pr_info("set frame fmt , no cache 0x%x", fmt);
+
+		ret = ov5640_write_reg(sensor, OV5640_REG_FORMAT_CONTROL00, fmt);
+		ov5640_read_reg(sensor, OV5640_REG_FORMAT_CONTROL00, &reg_val);
+		if (reg_val == fmt)
+			break;
+		msleep(5);
+		pr_err("retry %d, read reg 0x%x", retry, reg_val);
+	}
 
 	return ret;
 }

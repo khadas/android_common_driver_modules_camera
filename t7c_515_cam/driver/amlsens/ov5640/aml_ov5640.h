@@ -86,7 +86,7 @@ static const struct ov5640_pixfmt ov5640_formats[] = {
 static const struct regmap_config ov5640_regmap_config = {
 	.reg_bits = 16,
 	.val_bits = 8,
-	.cache_type = REGCACHE_RBTREE,
+	.cache_type = REGCACHE_NONE,
 };
 
 static struct ov5640_regval setting_1920_1080_2lane_672m_30fps[] = {
