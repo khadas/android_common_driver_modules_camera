@@ -107,9 +107,9 @@ static int csiphy_of_parse_ports(struct csiphy_dev_t *csiphy_dev)
 			return -EINVAL;
 		}
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0))
-		asd = v4l2_async_notifier_add_fwnode_subdev(notifier,
-					of_fwnode_handle(remote),
-					struct v4l2_async_subdev);
+		asd = __v4l2_async_notifier_add_fwnode_subdev(notifier,
+				of_fwnode_handle(remote),
+				sizeof(struct csiphy_async_subdev));
 #else
 		asd = v4l2_async_notifier_add_fwnode_subdev(notifier,
 					of_fwnode_handle(remote),
