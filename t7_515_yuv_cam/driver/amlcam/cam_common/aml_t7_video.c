@@ -31,7 +31,7 @@
 #include "aml_t7_video.h"
 #include "aml_t7_cam.h"
 
-#define  CAM_VIDEO_IDX_BEGIN_NUM           60
+#define  CAM_VIDEO_IDX_BEGIN_NUM           80
 
 #define VB2_MIN_BUFFER_COUNT 3
 

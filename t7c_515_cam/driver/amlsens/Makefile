@@ -1,8 +1,6 @@
 M_PATH := $(shell dirname $(lastword $(MAKEFILE_LIST)))
 
 obj-m += amlsens.o
-obj-m += amlsens-csi-a.o
-obj-m += amlsens-csi-b.o
 
 COMMON_DRV_SRC :=  $(wildcard $(M_PATH)/sensor_drv.c) \
 			$(wildcard $(M_PATH)/imx290/*.c) \
@@ -40,5 +38,3 @@ ccflags-y += -Wno-error
 EXTRA_CFLAGS += $(LOCAL_INCLUDES)
 
 amlsens-y := $(COMMON_DRV_SRC_OBJ) aml_sens.o
-amlsens-csi-a-y := $(COMMON_DRV_SRC_OBJ) aml_sens_csi_a.o
-amlsens-csi-b-y := $(COMMON_DRV_SRC_OBJ) aml_sens_csi_b.o

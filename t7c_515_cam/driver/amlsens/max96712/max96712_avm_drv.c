@@ -581,66 +581,60 @@ static int max96712_link_disable(struct max96712_priv *priv )
     return 0;
 }
 
+// return lock state. 1 locked; 0 not locked.
+static int max96712_wait_link_locked(struct max96712_priv *priv, int link)
+{
+    const int max_retry = 5;
+    int retry = 0;
+    int rtn = 0;
+    for (retry = 0; retry < max_retry; ++retry) {
+
+        msleep(60); // tLOCK2 maximum 60ms, refer to max96722 datasheet.
+
+        rtn = max96712_gmsl_1_link_lock_state(priv, link);
+        if (rtn) {
+            dev_info(&priv->client->dev, "link %d locked\n", link);
+            break;
+        }
+        dev_info(&priv->client->dev, "link %d not locked, retry %d\n", link, retry);
+    }
+    return rtn;
+}
+
 static int max96712_link_enable(struct max96712_priv *priv, int link)
 {
+    int rtn = 0;
+
     dev_info(&priv->client->dev, " enable link , link %d \n", link);
     // enable link A to gmsl 1
     switch (link) {
         case LINK_A:
         {
-            int rtn = 0;
             max96712_write( priv, 0x0006, 0b00000001);
             max96712_write( priv, 0x0018, 0b00000001);
-            msleep(200);
-            rtn = max96712_gmsl_1_link_lock_state(priv, link);
-            if (rtn) {
-                dev_info(&priv->client->dev, " link A locked \n");
-            } else {
-                dev_info(&priv->client->dev, " link A not locked \n");
-            }
+            rtn = max96712_wait_link_locked(priv, link);
         } break;
         case LINK_B: {
-            int rtn = 0;
             max96712_write( priv, 0x0006, 0b00000010);
             max96712_write( priv, 0x0018, 0b00000010);
-            msleep(200);
-            rtn = max96712_gmsl_1_link_lock_state(priv, link);
-            if (rtn) {
-                dev_info(&priv->client->dev, " link B locked \n");
-            } else {
-                dev_info(&priv->client->dev, " link b not locked \n");
-            }
+            rtn = max96712_wait_link_locked(priv, link);
         } break;
         case LINK_C:
         {
-            int rtn = 0;
             max96712_write( priv, 0x0006, 0b00000100);
             max96712_write( priv, 0x0018, 0b00000100);
-            msleep(200);
-            rtn = max96712_gmsl_1_link_lock_state(priv, link);
-            if (rtn) {
-                dev_info(&priv->client->dev, " link C locked \n");
-            } else {
-                dev_info(&priv->client->dev, " link C not locked \n");
-            }
+            rtn = max96712_wait_link_locked(priv, link);
         } break;
         case LINK_D: {
-            int rtn = 0;
             max96712_write( priv, 0x0006, 0b00001000);
             max96712_write( priv, 0x0018, 0b00001000);
-            msleep(200);
-            rtn = max96712_gmsl_1_link_lock_state(priv, link);
-            if (rtn) {
-                dev_info(&priv->client->dev, " link D locked \n");
-            } else {
-                dev_info(&priv->client->dev, " link D not locked \n");
-            }
+            rtn = max96712_wait_link_locked(priv, link);
         } break;
         default:
             dev_err(&priv->client->dev, " unknown link \n");
         break;
     }
-    return 0;
+    return rtn;
 }
 
 static int max96712_enable_vdd_ldo_reglator(struct max96712_priv *priv)
@@ -1344,7 +1338,7 @@ int max96712_avm_init(struct i2c_client *client, void *sdrv)
         max96712->ser_devs[sensor_idx].index = sensor_idx;
         max96712->ser_devs[sensor_idx].client = client;
 
-        max96712->ser_devs[sensor_idx].i2c_addr = MAX96705_I2C_ADDR + sensor_idx + 1;
+        max96712->ser_devs[sensor_idx].i2c_addr = MAX96705_I2C_ADDR;
         max96712->ser_devs[sensor_idx].i2c_reg_addr_bytes = 1;
         max96712->ser_devs[sensor_idx].i2c_reg_value_bytes = 1;
         max96712->ser_devs[sensor_idx].ref_des = max96712;
@@ -1352,7 +1346,7 @@ int max96712_avm_init(struct i2c_client *client, void *sdrv)
         max96712->sensor_devs[sensor_idx].index = sensor_idx;
         max96712->sensor_devs[sensor_idx].client = client;
 
-        max96712->sensor_devs[sensor_idx].i2c_addr = OX01F10_I2C_ADDR + sensor_idx + 1;
+        max96712->sensor_devs[sensor_idx].i2c_addr = OX01F10_I2C_ADDR;
         max96712->sensor_devs[sensor_idx].i2c_reg_addr_bytes = 2;
         max96712->sensor_devs[sensor_idx].i2c_reg_value_bytes = 1;
         max96712->sensor_devs[sensor_idx].ref_des = max96712;
@@ -1415,44 +1409,27 @@ int max96712_avm_init(struct i2c_client *client, void *sdrv)
     // =============  init  each link ===============
     for (link_idx = LINK_A; link_idx <= LINK_D; ++link_idx) {
         u32 id = 0;
-        max96712_link_enable(max96712, link_idx);
 
-        dev_info(&max96712->client->dev, " after link %d enable. max96705 11170947\n", link_idx);
-        ret = max96705_read_reg( &(max96712->ser_devs[link_idx]), 0x1e, (u8*)&id);
-        if (ret != 0 ) {
-            dev_info(&max96712->client->dev, "try using default serializer addr 0x40\n");
-            max96712->ser_devs[link_idx].i2c_addr = MAX96705_I2C_ADDR;
-            ret = max96705_read_reg( &(max96712->ser_devs[link_idx]) , 0x1e, (u8*)&id);
+        if (max96712_link_enable(max96712, link_idx) ) {
+            pr_info("config max96705");
+            // do not change 96705 i2c addr
+            max96705_write_reg( &(max96712->ser_devs[link_idx]) , 0x07, 0x84);
+            msleep(5);
+            max96705_write_reg( &(max96712->ser_devs[link_idx]) , 0x06, 0xa4);
         }
-
-        if (ret == 0 ) {
-            dev_info(&max96712->client->dev, "got 96705 id 0x%02x\n", id);
-            connected_sensor_count++;
-        } else {
-            dev_err(&max96712->client->dev, " 96705 get_id fail on link %d \n", link_idx);
-        }
-        //max96705_write_reg( &(max96712->ser_devs[link_idx]) , 0x01, MAX96712_I2C_ADDR<<1);
-        max96705_write_reg( &(max96712->ser_devs[link_idx]) , 0x04, 0x87);
-        max96705_write_reg( &(max96712->ser_devs[link_idx]) , 0x07, 0x84);
-        //max96705_write_reg( &(max96712->ser_devs[link_idx]) , 0x0F, 0xBF);
-        max96705_write_reg( &(max96712->ser_devs[link_idx]) , 0x06, 0xa4);
-
-        // Change its own address
-        max96705_write_reg( &(max96712->ser_devs[link_idx]) , 0x00, (MAX96705_I2C_ADDR + 1 + link_idx) << 1);
-
         // check video lock state
         ret= max96712_gmsl_1_video_lock_state(max96712,link_idx);
         if (ret) {
-            dev_info(&max96712->client->dev, " gmsl 1 video pipe %d locked \n", link_idx);
+            dev_info(&max96712->client->dev, "gmsl 1 video pipe %d locked \n", link_idx);
         } else {
             dev_info(&max96712->client->dev, "gmsl 1  video pipe %d not locked \n", link_idx);
         }
 
         ret= max96712_gmsl_2_video_lock_state(max96712,link_idx);
         if (ret) {
-            dev_info(&max96712->client->dev, " gmsl 2 video pipe %d locked \n", link_idx);
+            dev_info(&max96712->client->dev, "gmsl 2 video pipe %d locked \n", link_idx);
         } else {
-            dev_info(&max96712->client->dev, " gmsl 2 video pipe %d not locked \n", link_idx);
+            dev_info(&max96712->client->dev, "gmsl 2 video pipe %d not locked \n", link_idx);
         }
     }
 

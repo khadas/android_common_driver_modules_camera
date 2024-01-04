@@ -1,5 +1,5 @@
 /*
- * isp.c
+ * aml_t7_cam.c
  *
  *
  * This program is free software; you can redistribute it and/or modify
@@ -490,3 +490,95 @@ static int cam_remove(struct platform_device *pdev)
 	devm_kfree(dev, cam_dev);
 	return 0;
 }
+
+static const struct of_device_id cam_of_table[] = {
+	{.compatible = "amlogic, yuvcamera"},
+	{ },
+};
+
+MODULE_DEVICE_TABLE(of, cam_of_table);
+
+static struct platform_driver cam_driver = {
+	.probe = cam_probe,
+	.remove = cam_remove,
+	.driver = {
+		.name = "aml_camera_yuv",
+		.of_match_table = cam_of_table,
+	},
+};
+
+#if IS_ENABLED(CONFIG_AMLOGIC_FREERTOS)
+
+static int cam_driver_registered = 0; // 0 not registered. 1 registered.
+int cam_after_rtos = 0;
+module_param(cam_after_rtos, int, 0664);
+
+extern int register_freertos_notifier(struct notifier_block *nb);
+extern int unregister_freertos_notifier(struct notifier_block *nb);
+
+static int rtos_driver_event(struct notifier_block *this, unsigned long event, void *ptr)
+{
+	int32_t err = 0;
+
+	if (cam_driver_registered == 0) {
+		pr_info("event = %d, amlcam platform add drv\n", event);
+		err = platform_driver_register(&(cam_driver));
+		if (err)
+			pr_err("platform driver register fail. ret %d", err);
+		else
+			cam_driver_registered = 1;
+	}
+	return err;
+}
+
+static struct notifier_block camera_notifier =
+{
+	.notifier_call = rtos_driver_event,
+};
+
+static int __init amlcam_drv_init(void)
+{
+	int err;
+	pr_info("amlcam driver init\n");
+
+	if (cam_after_rtos == 0) {
+		// not after rtos, just add driver now.
+		pr_info("amlcam platform add drv\n");
+		err = platform_driver_register(&(cam_driver) );
+		if (err) {
+			pr_err("platform driver register fail. ret %d", err);
+			return err;
+		}
+		cam_driver_registered = 1;
+	}
+
+	err = register_freertos_notifier(&camera_notifier);
+	if (err) {
+		pr_err("amlcam register_freertos_notifier error\n");
+		return -1;
+	}
+	pr_info("amlcam register_freertos_notifier completed\n");
+
+	return err;
+}
+
+static void __exit amlcam_drv_exit(void)
+{
+	unregister_freertos_notifier(&camera_notifier);
+	if (cam_driver_registered) {
+		platform_driver_unregister(&(cam_driver) );
+	}
+}
+
+module_init(amlcam_drv_init);
+module_exit(amlcam_drv_exit);
+
+#else
+
+module_platform_driver(cam_driver);
+
+#endif
+
+MODULE_DESCRIPTION("Amlogic Image Sensor Driver");
+MODULE_AUTHOR("Amlogic Inc.");
+MODULE_LICENSE("GPL v2");

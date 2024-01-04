@@ -9,7 +9,7 @@ kernel_module(
         ],
     ),
     outs = [
-        "amlcam/amlogic-yuvcam-droid.ko",
+        "amlcam/amlogic-camera-yuv.ko",
     ],
     kernel_build = "//common:amlogic",
     visibility = [

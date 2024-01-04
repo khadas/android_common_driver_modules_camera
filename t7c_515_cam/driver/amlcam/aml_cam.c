@@ -682,47 +682,62 @@ static struct platform_driver cam_driver = {
 
 #if  IS_ENABLED(CONFIG_AMLOGIC_FREERTOS)
 
-static int  driver_registered = 0; // 0 not registered. 1 registered.
+static int  cam_driver_registered = 0; // 0 not registered. 1 registered.
+int cam_after_rtos = 0;
+module_param(cam_after_rtos, int, 0664);
 
 extern int register_freertos_notifier(struct notifier_block *nb);
 extern int unregister_freertos_notifier(struct notifier_block *nb);
 
 static int rtos_driver_event(struct notifier_block *this, unsigned long event, void *ptr)
 {
-	int32_t rc = 0;
-	printk("event = %d, amlcam isp platform add drv\n", event);
-
-	rc = platform_driver_register(&(cam_driver) );
-	driver_registered = 1;
-	return rc;
+	int32_t err = 0;
+	if (cam_driver_registered == 0) {
+		pr_info("event = %d, amlcam isp platform add drv\n", event);
+		err = platform_driver_register(&(cam_driver));
+		if (err)
+			pr_err("platform driver register fail. ret %d", err);
+		else
+			cam_driver_registered = 1;
+	}
+	return err;
 }
 
 static struct notifier_block camera_notifier =
 {
-		.notifier_call = rtos_driver_event,
+	.notifier_call = rtos_driver_event,
 };
 
 static int __init amlcam_drv_init(void)
 {
 	int err;
-	printk("amlcam isp driver register notifier\n");
+	pr_info("amlcam isp driver init\n");
+
+	if (cam_after_rtos == 0) {
+		// not after rtos, just add driver now.
+		pr_info("amlcam isp platform add drv\n");
+		err = platform_driver_register(&(cam_driver) );
+		if (err) {
+			pr_err("platform driver register fail. ret %d", err);
+			return err;
+		}
+		cam_driver_registered = 1;
+	}
 
 	err = register_freertos_notifier(&camera_notifier);
-	if (err)
-	{
-		printk("amlcam register_freertos_notifier error\n");
+	if (err) {
+		pr_err("amlcam register_freertos_notifier error\n");
 		return -1;
 	}
-	printk("amlcam isp register_freertos_notifier completed\n");
+	pr_info("amlcam isp register_freertos_notifier completed\n");
 
 	return err;
-
 }
 
 static void __exit amlcam_drv_exit(void)
 {
 	unregister_freertos_notifier(&camera_notifier);
-	if (driver_registered) {
+	if (cam_driver_registered) {
 		platform_driver_unregister(&(cam_driver) );
 	}
 }

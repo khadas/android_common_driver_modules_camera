@@ -11,8 +11,6 @@ kernel_module(
     outs = [
         "amlcam/amlcam.ko",
         "amlsens/amlsens.ko",
-        "amlsens/amlsens-csi-a.ko",
-        "amlsens/amlsens-csi-b.ko",
     ],
     kernel_build = "//common:amlogic",
     visibility = [
