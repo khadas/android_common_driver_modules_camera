@@ -346,6 +346,9 @@ static void lswb_rad_center_base(struct isp_dev_t *isp_dev, void *base)
 	isp_reg_update_bits(isp_dev, ISP_CUBIC_RAD_CENTER, center_x, 16, 16);
 	isp_reg_update_bits(isp_dev, ISP_CUBIC_RAD_CENTER, center_y, 0, 16);
 
+	isp_reg_update_bits(isp_dev, ISP_CUBIC_RAD_SCL0, rad_scale_x >> 4, 16, 16);
+	isp_reg_update_bits(isp_dev, ISP_CUBIC_RAD_SCL0, rad_scale_y >> 4, 0, 16);
+
 	isp_reg_update_bits(isp_dev, ISP_LSWB_RS_XSCALE, rad_scale_x, 0, 16);
 	isp_reg_update_bits(isp_dev, ISP_LSWB_RS_YSCALE, rad_scale_y, 0, 16);
 

@@ -45,7 +45,7 @@ static inline int i2c_read_a16d8(struct i2c_client *client, u8 slave, u16 addr, 
 
 	*value = buf[0] & 0xff;
 
-	return 0;
+	return ((ret != msg_count) ? -1 : 0);
 }
 
 static inline int i2c_write_a16d8(struct i2c_client *client, u8 slave, u16 addr, u8 value)

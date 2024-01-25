@@ -60,6 +60,109 @@ static const struct aml_format isp_subdev_formats[] = {
 	{0, 0, 0, 0, MEDIA_BUS_FMT_YVYU8_2X8, 0, 1, 8},
 };
 
+static const char *isp_reg_usage_str = {
+	"Usage:\n"
+	"echo r addr(H) > /sys/devices/platform/fe3b0000.isp0/reg;\n"
+	"echo w addr(H) value(H) > /sys/devices/platform/fe3b0000.isp0/reg;\n"
+};
+
+void parse_param(
+	char *buf_orig, char **parm)
+{
+	char *ps, *token;
+	unsigned int n = 0;
+	char delim1[3] = " ";
+	char delim2[2] = "\n";
+
+	ps = buf_orig;
+	strcat(delim1, delim2);
+	while (1) {
+		token = strsep(&ps, delim1);
+		if (token == NULL)
+			break;
+		if (*token == '\0')
+			continue;
+		parm[n++] = token;
+		pr_debug("%s %d of parm : %s \n", __func__, n, token);
+	}
+}
+
+ssize_t reg_read(
+	struct device *dev,
+	struct device_attribute *attr,
+	char *buf)
+{
+	return sprintf(buf, "%s\n", isp_reg_usage_str);
+}
+
+ssize_t reg_write(
+	struct device *dev, struct device_attribute *attr,
+	char const *buf, size_t size)
+{
+
+	char *buf_orig, *parm[8] = {NULL};
+	long val = 0;
+	unsigned int reg_addr, reg_val, i;
+	struct isp_dev_t *isp_dev = dev->driver_data;
+	ssize_t ret = size;
+	unsigned int isp_sw_base = 0x4000;
+
+	if (!buf)
+		return ret;
+
+	buf_orig = kstrdup(buf, GFP_KERNEL);
+	if (!buf_orig)
+		return ret;
+	parse_param(buf_orig, (char **)&parm);
+
+	if (!parm[0]) {
+		ret = -EINVAL;
+		goto Err;
+	}
+
+	if (!strcmp(parm[0], "w")) {
+		if (!parm[1] || (kstrtoul(parm[1], 16, &val) < 0)) {
+			ret = -EINVAL;
+			goto Err;
+		}
+		reg_addr = val;
+		if (!parm[2] || (kstrtoul(parm[2], 16, &val) < 0)) {
+			ret = -EINVAL;
+			goto Err;
+		}
+		reg_val = val;
+		if (isp_dev->ops->hw_write) {
+			isp_dev->ops->hw_write(isp_dev, (isp_sw_base + (reg_addr << 2)), reg_val);
+			pr_err("ISP WRITE[0x%x]=0x%08x\n", reg_addr, reg_val);
+		} else {
+			pr_err("%s need init isp dev ops first \n", __func__);
+			ret = -EINVAL;
+			goto Err;
+		}
+	} else if (!strcmp(parm[0], "r")) {
+		if (!parm[1] || (kstrtoul(parm[1], 16, &val) < 0)) {
+			ret = -EINVAL;
+			goto Err;
+		}
+		reg_addr = val;
+		if (isp_dev->ops->hw_read) {
+			reg_val = isp_dev->ops->hw_read(isp_dev, (isp_sw_base + (reg_addr << 2)));
+			pr_err("ISP READ[0x%x]=0x%08x\n", reg_addr, reg_val);
+		} else {
+			pr_err("%s need init isp dev ops first \n", __func__);
+			ret = -EINVAL;
+			goto Err;
+		}
+	} else {
+		pr_err("unsupprt cmd!\n");
+	}
+Err:
+	kfree(buf_orig);
+	return ret;
+}
+
+DEVICE_ATTR(reg, S_IRUGO | S_IWUSR, reg_read, reg_write);
+
 struct isp_dev_t *isp_subdrv_get_dev(int index)
 {
 	if (index >= 4) {

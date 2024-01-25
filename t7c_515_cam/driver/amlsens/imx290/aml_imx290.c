@@ -228,16 +228,36 @@ static int imx290_set_exposure(struct imx290 *imx290, u32 value)
 static int imx290_set_fps(struct imx290 *imx290, u32 value)
 {
 	u32 vts = 0;
+	u32 expo = 0, vts_o = 0, shuttime = 0;
 	u8 vts_h, vts_l;
 
-	//dev_err(imx290->dev, "-imx290-value = %d\n", value);
+	imx290_read_reg(imx290, 0x3019, &vts_h);
+	imx290_read_reg(imx290, 0x3018, &vts_l);
+	vts_o = (vts_h << 8) | vts_l;
 
-	vts = 30 * 1125 / value;
+	imx290_read_reg(imx290, 0x3021, &vts_h);
+	imx290_read_reg(imx290, 0x3020, &vts_l);
+	expo = (vts_h << 8) | vts_l;
+
+	shuttime = vts_o - expo;
+
+	imx290_write_reg(imx290, IMX290_REGHOLD, 0x01);
+
+	vts = 30 * 1157 / value;
 	vts_h = (vts >> 8) & 0x7f;
 	vts_l = vts & 0xff;
 
 	imx290_write_reg(imx290, 0x3019, vts_h);
 	imx290_write_reg(imx290, 0x3018, vts_l);
+
+	expo = vts - shuttime;
+	vts_h = (expo >> 8) & 0x7f;
+	vts_l = expo & 0xff;
+
+	imx290_write_reg(imx290, 0x3021, vts_h);
+	imx290_write_reg(imx290, 0x3020, vts_l);
+
+	imx290_write_reg(imx290, IMX290_REGHOLD, 0x00);
 
 	return 0;
 }

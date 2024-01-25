@@ -18,8 +18,10 @@
 #include <media/v4l2-subdev.h>
 #include <linux/of_platform.h>
 #include <linux/of_graph.h>
+#include <linux/debugfs.h>
 
 #include "sensor_drv.h"
+#include "i2c_api.h"
 
 struct amlsens *g_sensor[8];
 
@@ -40,6 +42,7 @@ static int sensor_set_ptr(struct amlsens * sensor)
 	for (i = 0; i < sizeof(g_sensor); i++) {
 		if (g_sensor[i] == NULL) {
 			g_sensor[i] = sensor;
+			sensor->index = i;
 			return 0;
 		}
 	}
@@ -183,6 +186,155 @@ err_return:
 	return rtn;
 }
 
+static const char *sensor_reg_usage_str = {
+	"Usage:\n"
+	"echo r addr(H) > /sys/kernel/debug/sensor0/reg;\n"
+	"echo w addr(H) value(H) > /sys/kernel/debug/sensor0/reg;\n"
+};
+
+static void parse_param(char *buf_orig, char **parm)
+{
+	char *ps, *token;
+	unsigned int n = 0;
+	char delim1[3] = " ";
+	char delim2[2] = "\n";
+	ps = buf_orig;
+	strcat(delim1, delim2);
+	while (1) {
+		token = strsep(&ps, delim1);
+		if (token == NULL)
+			break;
+		if (*token == '\0')
+			continue;
+		parm[n++] = token;
+		pr_debug("%s %d of parm : %s \n", __func__, n, token);
+	}
+}
+
+static ssize_t sensor_file_read(struct file *f, char *buffer, size_t len, loff_t *offset)
+{
+	return simple_read_from_buffer(buffer, len, offset, sensor_reg_usage_str, strlen(sensor_reg_usage_str));
+}
+
+static ssize_t sensor_file_write(struct file *f, const char *buffer, size_t len, loff_t *offset)
+{
+	ssize_t ret;
+	char data[PAGE_SIZE];
+	char *parm[8] = {NULL};
+	long val = 0;
+	u16 reg_addr;
+	u8 reg_val;
+	int i2c_ret;
+	struct path f_path = f->f_path;
+	struct dentry *f_dentry = f_path.dentry;
+	struct dentry *p_dentry = f_dentry->d_parent;
+
+	ret = simple_write_to_buffer(data, PAGE_SIZE, offset, buffer, len);
+	if (ret < 0)
+		return ret;
+	pr_debug("%s: data len: %d, write data: %s \n", __func__, ret, data);
+	parse_param(data, (char **)&parm);
+	if (!parm[0]) {
+		ret = -EINVAL;
+		goto Err;
+	}
+	if (!strcmp(parm[0], "w")) {
+		if (!parm[1] || (kstrtoul(parm[1], 16, &val) < 0)) {
+			ret = -EINVAL;
+			goto Err;
+		}
+		reg_addr = val;
+		if (!parm[2] || (kstrtoul(parm[2], 16, &val) < 0)) {
+			ret = -EINVAL;
+			goto Err;
+		}
+		reg_val = val;
+		pr_debug("%s reg addr 0x%x, reg val 0x%x \n", __func__, reg_addr, reg_val);
+		if (g_sensor[0] && strstr(p_dentry->d_iname, "sensor0")) {
+			pr_err("%s sensor0 write name %s", __func__, p_dentry->d_iname);
+			i2c_ret = i2c_write_a16d8(g_sensor[0]->client, g_sensor[0]->client->addr, reg_addr, reg_val);
+			if (i2c_ret) {
+				pr_err("%s i2c write fail i2c addr 0x%x \n", __func__, g_sensor[0]->client->addr);
+				ret = -EINVAL;
+				goto Err;
+			} else {
+				pr_err("SENSOR WRITE[0x%x]=0x%x i2c addr 0x%x \n", reg_addr, reg_val, g_sensor[0]->client->addr);
+			}
+		} else if (g_sensor[1] && strstr(p_dentry->d_iname, "sensor1")) {
+			pr_err("%s sensor1 write name %s", __func__, p_dentry->d_iname);
+			i2c_ret = i2c_write_a16d8(g_sensor[1]->client, g_sensor[1]->client->addr, reg_addr, reg_val);
+			if (i2c_ret) {
+				pr_err("%s i2c write fail i2c addr 0x%x \n", __func__, g_sensor[1]->client->addr);
+				ret = -EINVAL;
+				goto Err;
+			} else {
+				pr_err("SENSOR WRITE[0x%x]=0x%x i2c addr 0x%x \n", reg_addr, reg_val, g_sensor[1]->client->addr);
+			}
+		} else {
+			pr_err("%s need init sensor first \n", __func__);
+			goto Err;
+		}
+	} else if (!strcmp(parm[0], "r")) {
+		if (!parm[1] || (kstrtoul(parm[1], 16, &val) < 0)) {
+			ret = -EINVAL;
+			goto Err;
+		}
+		reg_addr = val;
+		pr_debug("%s reg addr 0x%x \n", __func__, reg_addr);
+		if (g_sensor[0] && strstr(p_dentry->d_iname, "sensor0")) {
+			pr_err("%s sensor0 read name %s", __func__, p_dentry->d_iname);
+			i2c_ret = i2c_read_a16d8(g_sensor[0]->client, g_sensor[0]->client->addr, reg_addr, &reg_val);
+			if (i2c_ret) {
+				pr_err("%s i2c read fail i2c addr 0x%x \n", __func__, g_sensor[0]->client->addr);
+				ret = -EINVAL;
+				goto Err;
+			} else {
+				pr_err("SENSOR READ[0x%x]=0x%x i2c addr 0x%x \n", reg_addr, reg_val, g_sensor[0]->client->addr);
+			}
+		} else if (g_sensor[1] && strstr(p_dentry->d_iname, "sensor1")) {
+			pr_err("%s sensor1 read name %s", __func__, p_dentry->d_iname);
+			i2c_ret = i2c_read_a16d8(g_sensor[1]->client, g_sensor[1]->client->addr, reg_addr, &reg_val);
+			if (i2c_ret) {
+				pr_err("%s i2c read fail i2c addr 0x%x \n", __func__, g_sensor[1]->client->addr);
+				ret = -EINVAL;
+				goto Err;
+			} else {
+				pr_err("SENSOR READ[0x%x]=0x%x i2c addr 0x%x \n", reg_addr, reg_val, g_sensor[1]->client->addr);
+			}
+		} else {
+			pr_err("%s need init sensor first \n", __func__);
+			goto Err;
+		}
+	} else {
+		pr_err("unsupprt cmd!\n");
+	}
+
+Err:
+	return ret;
+}
+
+static const struct file_operations data_file_fops = {
+	.owner = THIS_MODULE,
+	.write = sensor_file_write,
+	.read = sensor_file_read,
+};
+
+static int settle_init_debugfs(struct amlsens *sensor) {
+	char sensor_dir[256];
+	snprintf(sensor_dir, 256, "sensor%d", sensor->index);
+	sensor->debugfs_dir = debugfs_create_dir(sensor_dir, NULL);
+	if (sensor->debugfs_dir == NULL) {
+		printk("%s: create debugfs dir failed\n", __func__);
+		return -1;
+	}
+	sensor->debugfs_file = debugfs_create_file("reg", S_IRUGO | S_IWUSR, sensor->debugfs_dir, NULL, &data_file_fops);
+	if (sensor->debugfs_file == NULL) {
+		printk("%s: create debugfs file failed\n", __func__);
+		return -1;
+	}
+	return 0;
+}
+
 static int sensor_probe(struct i2c_client *client)
 {
 	struct device *dev = &client->dev;
@@ -222,6 +374,7 @@ static int sensor_probe(struct i2c_client *client)
 	v4l2_fwnode_endpoint_free(&sensor->ep);
 
 	sensor_set_ptr(sensor);
+	settle_init_debugfs(sensor);
 
 	return 0;
 
@@ -236,6 +389,7 @@ static int sensor_remove(struct i2c_client *client)
 	struct amlsens *sensor = sensor_get_ptr(client);
 
 	if (sensor) {
+		debugfs_remove_recursive(sensor->debugfs_dir);
 		sensor->sd_sdrv->sensor_deinit(client);
 		sensor = NULL;
 	}
