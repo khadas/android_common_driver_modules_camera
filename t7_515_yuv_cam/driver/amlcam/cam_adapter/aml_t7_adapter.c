@@ -435,12 +435,59 @@ static void adap_subdev_cma_free(struct platform_device *pdev, void *page, unsig
 	}
 }
 
+#if defined(DUMP_GE2D_IN) || defined(DUMP_GE2D_OUT)
+static void *adap_subdev_map_vaddr(u32 phys_addr, u32 length)
+{
+	pgprot_t prot;
+	struct page *page = phys_to_page(phys_addr);
+	struct page **pages = NULL;
+	unsigned int pagesnr;
+	struct page *tmp = NULL;
+	void *vaddr = NULL;
+	int array_size;
+	int i;
+
+	prot = pgprot_writecombine(PAGE_KERNEL);
+	pagesnr = length / PAGE_SIZE;
+	tmp = page;
+	array_size = sizeof(struct page *) * pagesnr;
+
+	pages = vmalloc(array_size);
+	if (pages == NULL) {
+		pr_info("0x%x vmalloc failed.\n", array_size);
+		return NULL;
+	}
+
+	for (i = 0; i < pagesnr; i++) {
+		*(pages + i) = tmp;
+		tmp++;
+	}
+
+	vaddr = vmap(pages, pagesnr, VM_MAP, prot);
+	vfree(pages);
+
+	return vaddr;
+}
+
+static void adap_subdev_unmap_vaddr(void *vaddr)
+{
+	vunmap(vaddr);
+}
+
+#else
+
+#define adap_subdev_map_vaddr(phys_addr, length)    NULL
+#define adap_subdev_unmap_vaddr(vaddr)              do {} while(0)
+
+#endif
+
 static int adap_subdev_alloc_raw_buffs(struct adapter_dev_t *a_dev)
 {
 	int i = 0;
 	int rtn = 0;
 	unsigned long flags;
 	dma_addr_t paddr = 0x0000;
+	void *virtaddr = NULL;
 	unsigned int bsize = 0;
 	unsigned int fsize = 0;
 	unsigned int fcnt = 0;
@@ -461,11 +508,14 @@ static int adap_subdev_alloc_raw_buffs(struct adapter_dev_t *a_dev)
 		return -1;
 	}
 
+	virtaddr = adap_subdev_map_vaddr(paddr, bsize);
+
 	spin_lock_irqsave(&param->ddr_lock, flags);
 
 	for (i = 0; i < fcnt; i++) {
 		param->mem_path_buf[i].bsize = fsize;
 		param->mem_path_buf[i].addr[AML_PLANE_A] = paddr + i * fsize;
+		param->mem_path_buf[i].vaddr[AML_PLANE_A] = virtaddr==NULL? NULL : virtaddr + i * fsize;
 
 		list_add_tail(&param->mem_path_buf[i].list, &param->mem_path_list);
 	}
@@ -488,11 +538,14 @@ static int adap_subdev_alloc_raw_buffs(struct adapter_dev_t *a_dev)
 		return -1;
 	}
 
+	virtaddr = adap_subdev_map_vaddr(paddr, bsize);
+
 	spin_lock_irqsave(&param->ddr_lock, flags);
 
 	for (i = 0; i < fcnt; i++) {
 		param->isp_path_buf[i].bsize = fsize;
 		param->isp_path_buf[i].addr[AML_PLANE_A] = paddr + i * fsize;
+		param->isp_path_buf[i].vaddr[AML_PLANE_A] = virtaddr==NULL? NULL : virtaddr + i * fsize;
 
 		list_add_tail(&param->isp_path_buf[i].list, &param->isp_path_list);
 	}
@@ -524,8 +577,11 @@ static void adap_subdev_free_raw_buffs(struct adapter_dev_t *a_dev)
 	if (paddr)
 		adap_subdev_cma_free(a_dev->pdev, page, a_dev->param.mem_path_buf[0].bsize * (fcnt + 1));
 
+	adap_subdev_unmap_vaddr(a_dev->param.mem_path_buf[0].vaddr[AML_PLANE_A]);
+
 	for (i = 0; i < fcnt; i++) {
 		param->mem_path_buf[i].addr[AML_PLANE_A] = 0;
+		param->mem_path_buf[i].vaddr[AML_PLANE_A] = NULL;
 	}
 
 	spin_lock_irqsave(&param->ddr_lock, flags);
@@ -540,8 +596,11 @@ static void adap_subdev_free_raw_buffs(struct adapter_dev_t *a_dev)
 	if (paddr)
 		adap_subdev_cma_free(a_dev->pdev, page, a_dev->param.isp_path_buf[0].bsize * (fcnt + 1));
 
+	adap_subdev_unmap_vaddr(a_dev->param.isp_path_buf[0].vaddr[AML_PLANE_A]);
+
 	for (i = 0; i < fcnt; i++) {
 		param->isp_path_buf[i].addr[AML_PLANE_A] = 0;
+		param->isp_path_buf[i].vaddr[AML_PLANE_A] = NULL;
 	}
 
 }

@@ -17,6 +17,8 @@
 *
 */
 
+#include <linux/fs.h>
+
 #include "aml_t7_adapter.h"
 
 #define AML_VIDEO_NAME "t7-video-%u-%u"
@@ -28,12 +30,99 @@ static const struct aml_format adap_cap_support_format[] = {
 	{0, 0, 0, V4L2_PIX_FMT_YVYU, 1, 16},
 	{0, 0, 0, V4L2_PIX_FMT_UYVY, 1, 16},
 	{0, 0, 0, V4L2_PIX_FMT_VYUY, 1, 16},
+	{0, 0, 0, V4L2_PIX_FMT_BGR24, 1, 24},
+	{0, 0, 0, V4L2_PIX_FMT_RGB24, 1, 24},
+	{0, 0, 0, V4L2_PIX_FMT_NV21, 1, 12},
+	{0, 0, 0, V4L2_PIX_FMT_NV12, 1, 12}
 };
+
+#if defined(DUMP_GE2D_IN) || defined(DUMP_GE2D_OUT)
+int write_data_to_buf(char *path, char *buf, int size)
+{
+	int ret = 0;
+	struct file *fp = NULL;
+	loff_t pos = 0;
+	unsigned int r_size = 0;
+
+	if (buf == NULL || size == 0) {
+		pr_info("%s:Error input param\n", __func__);
+		return -1;
+	}
+
+	fp = filp_open(path, O_RDWR | O_CREAT, 0644);
+	if (IS_ERR(fp)) {
+		pr_info("read error.\n");
+		return -1;
+	}
+
+	r_size = kernel_write(fp, buf, size, &pos);
+
+	filp_close(fp, NULL);
+
+	return ret;
+}
+
+MODULE_IMPORT_NS(VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver);
+
+#endif
+
+static int v4l2_2_ge2d_fmt(int v4l2_format)
+{
+	int format = GE2D_FORMAT_S16_YUV422;
+
+	switch (v4l2_format) {
+	case V4L2_PIX_FMT_RGB565X:
+		format = GE2D_FORMAT_S16_RGB_565;
+		break;
+	case V4L2_PIX_FMT_YUV444:
+		format = GE2D_FORMAT_S24_YUV444;
+		break;
+	case V4L2_PIX_FMT_VYUY:
+	case V4L2_PIX_FMT_UYVY:
+	case V4L2_PIX_FMT_YVYU:
+	case V4L2_PIX_FMT_YUYV:
+		format = GE2D_FORMAT_S16_YUV422;
+		break;
+	case V4L2_PIX_FMT_BGR24:
+		format = GE2D_FORMAT_S24_RGB;
+		break;
+	case V4L2_PIX_FMT_RGB24:
+		format = GE2D_FORMAT_S24_BGR;
+		break;
+	case V4L2_PIX_FMT_NV12:
+		format = GE2D_FORMAT_M24_NV12;
+		break;
+	case V4L2_PIX_FMT_NV21:
+		format = GE2D_FORMAT_M24_NV21;
+		break;
+	default:
+		pr_err("unsupport fmt 0x%x, def to GE2D_FORMAT_S16_YUV422", v4l2_format);
+		break;
+	}
+	return format;
+}
 
 static void adap_do_ge2d(struct ge2d_context_s *_context,
 	struct aml_buffer * src_buffer, struct aml_buffer * dst_buffer,
-	int src_w, int src_h, int dst_w, int dst_h) {
+	int src_w, int src_h, int src_ge2d_fmt,
+	int dst_w, int dst_h, int dst_ge2d_fmt)
+{
 	struct config_para_ex_s ge2d_config;
+#ifdef DUMP_GE2D_IN
+	if (src_buffer->vaddr[AML_PLANE_A])
+	{
+		static int in_num = 0;
+		in_num++;
+		char in_path[128];
+		snprintf(in_path, 128, "/sdcard/DCIM/ge2d-in-%d.raw", in_num);
+		write_data_to_buf(in_path, src_buffer->vaddr[AML_PLANE_A], src_buffer->bsize);
+	}
+#endif
+
+	int endian = GE2D_LITTLE_ENDIAN;
+	if (src_ge2d_fmt == dst_ge2d_fmt) // just for copy. do not assign endian.
+		endian = GE2D_BIG_ENDIAN;
+
 	memset(&ge2d_config, 0, sizeof(struct config_para_ex_s));
 	ge2d_config.alu_const_color = 0;/*0x000000ff;*/
 	ge2d_config.bitmask_en = 0;
@@ -43,10 +132,7 @@ static void adap_do_ge2d(struct ge2d_context_s *_context,
 	ge2d_config.src_planes[0].w = src_w;
 	ge2d_config.src_planes[0].h = src_h;
 
-	ge2d_config.src_para.format = GE2D_FORMAT_S16_YUV422;
-	ge2d_config.dst_planes[0].addr = (unsigned long)(dst_buffer->addr[AML_PLANE_A]);
-	ge2d_config.dst_planes[0].w = dst_w;
-	ge2d_config.dst_planes[0].h = dst_h;
+	ge2d_config.src_para.format = src_ge2d_fmt | endian;
 	ge2d_config.src_key.key_enable = 0;
 	ge2d_config.src_key.key_mask = 0;
 	ge2d_config.src_key.key_mode = 0;
@@ -62,9 +148,19 @@ static void adap_do_ge2d(struct ge2d_context_s *_context,
 	ge2d_config.src_para.width = src_w;
 	ge2d_config.src_para.height = src_h;
 	ge2d_config.src2_para.mem_type = CANVAS_TYPE_INVALID;
-	ge2d_config.dst_para.canvas_index = 0;
+
+	ge2d_config.dst_planes[0].addr = (unsigned long)(dst_buffer->addr[AML_PLANE_A]);
+	ge2d_config.dst_planes[0].w = dst_w;
+	ge2d_config.dst_planes[0].h = dst_h;
+
+	if (dst_ge2d_fmt == GE2D_FORMAT_M24_NV21  || dst_ge2d_fmt == GE2D_FORMAT_M24_NV12) {
+		ge2d_config.dst_planes[1].addr = (unsigned long)((dst_buffer->addr[AML_PLANE_A] & 0xffffffff) + dst_w * dst_h);
+		ge2d_config.dst_planes[1].w = dst_w;
+		ge2d_config.dst_planes[1].h = dst_h / 2;
+	}
+
 	ge2d_config.dst_para.mem_type = CANVAS_ALLOC;
-	ge2d_config.dst_para.format = GE2D_FORMAT_S16_YUV422;
+	ge2d_config.dst_para.format = dst_ge2d_fmt | endian;
 	ge2d_config.dst_para.fill_color_en = 0;
 	ge2d_config.dst_para.fill_mode = 0;
 	ge2d_config.dst_para.x_rev = 0;
@@ -75,13 +171,26 @@ static void adap_do_ge2d(struct ge2d_context_s *_context,
 	ge2d_config.dst_para.left = 0;
 	ge2d_config.dst_para.width = dst_w;
 	ge2d_config.dst_para.height = dst_h;
+
 	if (ge2d_context_config_ex(_context, &ge2d_config) == 0) {
 		stretchblt_noalpha(_context, 0, 0, src_w,
 			src_h,
 			0, 0, dst_w,
 			dst_h);
 	}
+
+#ifdef DUMP_GE2D_OUT
+	if (dst_buffer->vaddr[AML_PLANE_A])
+	{
+		static int out_num = 0;
+		out_num++;
+		char out_path[128];
+		snprintf(out_path, 128, "/sdcard/DCIM/ge2d-out-%d.raw", out_num);
+		write_data_to_buf(out_path, dst_buffer->vaddr[AML_PLANE_A], dst_buffer->bsize);
+	}
+#endif
 }
+
 // /dev/videoX
 // X is determined with adater idx and CAM_VIDEO_IDX_BEGIN_NUM (aml_t7_video.c)
 // X = CAM_VIDEO_IDX_BEGIN_NUM + video_start_idx_of_adapter[adapter_idx] + id
@@ -115,9 +224,11 @@ static int adap_cap_irq_handler(void *video, void * in_buff, u32 frm_cnt, u32 wi
 			adap_isr_printk("free buf. no filled buf.");
 		else
 		{
+			int dst_ge2d_fmt = v4l2_2_ge2d_fmt(vd->afmt.fourcc);
 			spin_unlock_irqrestore(&vd->buff_list_lock, flags);
-			adap_do_ge2d(adap_dev->context_ge2d, in_ge2d_buffer, b_current_filled, width,
-				height,  vd->afmt.width,  vd->afmt.height);
+			adap_do_ge2d(adap_dev->context_ge2d, in_ge2d_buffer, b_current_filled,
+				width, height, GE2D_FORMAT_S16_YUV422,
+				vd->afmt.width, vd->afmt.height, dst_ge2d_fmt);
 			spin_lock_irqsave(&vd->buff_list_lock, flags);
 			b_current_filled->vb.sequence = frm_cnt;
 			b_current_filled->vb.vb2_buf.timestamp = ktime_get_ns();
@@ -141,7 +252,7 @@ static int adap_cap_set_format(void *video)
 	struct adapter_dev_t *adap_dev = vd->priv;
 	const struct adapter_dev_ops *ops = adap_dev->ops;
 
-	dev_err(vd->dev, "video adap stream set fmt\n");
+	dev_info(vd->dev, "video adap stream set fmt\n");
 
 	fmt->width = vd->f_current.fmt.pix.width;
 	fmt->height = vd->f_current.fmt.pix.height;

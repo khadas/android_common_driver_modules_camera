@@ -28,4 +28,7 @@ ccflags-y += -Wno-declaration-after-statement
 #ccflags-y += -DDEBUG_TEST_MIPI_RESET=1
 #
 
+#ccflags-y += -DDUMP_GE2D_IN=1
+#ccflags-y += -DDUMP_GE2D_OUT=1
+
 amlogic-camera-yuv-y := $(DRV_SRC_OBJ)

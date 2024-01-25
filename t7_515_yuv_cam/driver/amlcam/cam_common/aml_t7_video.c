@@ -318,12 +318,13 @@ static int video_buff_init(struct vb2_buffer *vb)
 	struct aml_buffer *buff = container_of(vbuf, struct aml_buffer, vb);
 	const struct v4l2_pix_format *pix = &video->f_current.fmt.pix;
 
-
 	buff->addr[AML_PLANE_A] = *((u32 *)vb2_plane_cookie(vb, 0));
 	buff->vaddr[AML_PLANE_A] = vb2_plane_vaddr(vb, 0);
+	buff->bsize = pix->sizeimage;
 
 	dev_err(video->dev,
-		"%s ++ , addr 0x%x, vaddr 0x%p\n", __func__, buff->addr[AML_PLANE_A], buff->vaddr[AML_PLANE_A]);
+		"%s ++ , addr 0x%x, vaddr 0x%p, bsize 0x%x\n", __func__,
+		buff->addr[AML_PLANE_A], buff->vaddr[AML_PLANE_A], buff->bsize);
 
 	if (pix->pixelformat == V4L2_PIX_FMT_NV12 ||
 			pix->pixelformat == V4L2_PIX_FMT_NV21) {
