@@ -49,6 +49,9 @@ struct cam_device {
 	struct adapter_dev_t adap_dev;
 	struct isp_dev_t isp_dev;
 	struct pattern_dev_t pattern;
+
+	struct timer_list dq_check_timer;
+
 };
 
 #endif /* __AML_CAM_H__ */

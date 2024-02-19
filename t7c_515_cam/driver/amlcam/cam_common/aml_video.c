@@ -560,6 +560,12 @@ static int video_start_streaming(struct vb2_queue *queue, unsigned int count)
 
 	pr_info("stream on vid %d, pipeline streaming_count %d ", video->id, video->pipe->streaming_count);
 
+	if (video->pipe->streaming_count == 1) {
+		pr_info("start dq check timer on vid %d", video->id);
+		mod_timer(&cam_dev->dq_check_timer, jiffies + msecs_to_jiffies(500));
+		video->dq_check_timer_working = 1;
+	}
+
 error_return:
 
 	mutex_unlock(&one_entry_lock);

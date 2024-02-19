@@ -30,6 +30,12 @@
 
 #include "aml_cam.h"
 
+#ifdef DEBUG_TEST_MIPI_RESET
+extern int debug_test_mipi_reset;
+#endif
+
+static void cam_debug_dq_check_timeout(struct timer_list *t);
+
 static int cam_subdevs_register(struct cam_device *cam_dev)
 {
 	int rtn;
@@ -372,6 +378,10 @@ static int cam_async_notifier_complete(struct v4l2_async_notifier *async)
 
 	dev_info(cam_dev->dev, "Success async notifier complete\n");
 
+	timer_setup(&(cam_dev->dq_check_timer ), cam_debug_dq_check_timeout, 0);
+
+	dev_info(cam_dev->dev, "dq check timer setup\n");
+
 error_return:
 
 	return rtn;
@@ -498,6 +508,65 @@ static void cam_media_dev_init(struct cam_device *cam_dev)
 	cam_dev->media_dev.ops = &mdev_ops;
 
 	media_device_init(&cam_dev->media_dev);
+}
+
+void cam_debug_mipi_dump(struct cam_device *cam_dev)
+{
+	extern  uint32_t debug_isp_irq_in_count;
+	extern  uint32_t debug_isp_irq_out_count;
+
+	pr_err("isp irq in %d,  out %d", debug_isp_irq_in_count, debug_isp_irq_out_count);
+
+}
+
+int cam_debug_mipi_off(struct cam_device *cam_dev)
+{
+	// adapter off
+	if (cam_dev->adap_dev.ops->hw_stop) {
+		cam_dev->adap_dev.ops->hw_stop(&(cam_dev->adap_dev));
+		pr_err("adap hw_stop");
+	}
+	// csiphy off
+	cam_dev->csiphy_dev.ops->hw_stop(&(cam_dev->csiphy_dev), cam_dev->csiphy_dev.index );
+	return 0;
+}
+
+int cam_debug_mipi_on(struct cam_device *cam_dev)
+{
+	// adapter re-init
+	if (cam_dev->adap_dev.ops->hw_reset)
+		cam_dev->adap_dev.ops->hw_reset(&(cam_dev->adap_dev));
+
+	if (cam_dev->adap_dev.ops->hw_init)
+		cam_dev->adap_dev.ops->hw_init(&(cam_dev->adap_dev));
+
+	// adapter on
+	if (cam_dev->adap_dev.ops->hw_start) {
+		cam_dev->adap_dev.ops->hw_start(&(cam_dev->adap_dev));
+		pr_err("adap hw_start");
+	}
+	// csiphy on
+	cam_dev->csiphy_dev.ops->hw_start(&(cam_dev->csiphy_dev), cam_dev->csiphy_dev.index, cam_dev->csiphy_dev.lanecnt, cam_dev->csiphy_dev.lanebps);
+
+#ifdef DEBUG_TEST_MIPI_RESET
+	debug_test_mipi_reset = 0;
+#endif
+
+	return 0;
+}
+
+static void cam_debug_dq_check_timeout(struct timer_list *t)
+{
+	struct cam_device *cam_dev = container_of(t, struct cam_device, dq_check_timer);
+
+	pr_err("in, dump & reset mipi");
+
+	cam_debug_mipi_dump( cam_dev);
+
+	cam_debug_mipi_off(cam_dev);
+	cam_debug_mipi_on(cam_dev);
+
+	pr_err("leave");
 }
 
 static int cam_v4l2_dev_register(struct cam_device *cam_dev)

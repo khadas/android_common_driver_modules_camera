@@ -55,6 +55,9 @@ ccflags-y += -DT7C_CHIP -DANDROID_OS
 ccflags-y += -Wno-unused-function
 ccflags-y += -Wno-unused-variable
 
+#
+#ccflags-y += -DDEBUG_TEST_MIPI_RESET=1
+#
 
 LOCAL_INCLUDES := -I$(M_PATH)/ -I$(M_PATH)/cam_common \
                 -I$(M_PATH)/cam_isp -I$(M_PATH)/cam_isp/hw/ \

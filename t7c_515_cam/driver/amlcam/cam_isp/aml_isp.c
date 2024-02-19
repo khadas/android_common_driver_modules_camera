@@ -39,6 +39,13 @@
 
 static struct isp_dev_t *g_isp_dev[4];
 
+volatile uint32_t debug_isp_irq_in_count = 0;
+volatile uint32_t debug_isp_irq_out_count = 0;
+
+#ifdef DEBUG_TEST_MIPI_RESET
+volatile int debug_test_mipi_reset = 1;
+#endif
+
 static const struct aml_format isp_subdev_formats[] = {
 	{0, 0, 0, 0, MEDIA_BUS_FMT_SBGGR8_1X8, 0, 1, 8},
 	{0, 0, 0, 0, MEDIA_BUS_FMT_SGBRG8_1X8, 0, 1, 8},
@@ -683,16 +690,22 @@ static irqreturn_t isp_subdev_irq_handler(int irq, void *dev)
 	u64 start_time, end_time, diff;
 	start_time = ktime_get_real_ns();
 #endif
+
+	debug_isp_irq_in_count++;
+
 	if (isp_dev->isp_status == STATUS_STOP) {
 		if (aml_adap_global_get_vdev() == isp_dev->index) {
 			pr_err("ISP%d: Stoped and Irq ignore\n", isp_dev->index);
 			aml_adap_global_done_completion();
 		}
+		debug_isp_irq_out_count++;
 		return IRQ_HANDLED;
 	}
 
-	if (aml_adap_global_get_vdev() != isp_dev->index)
+	if (aml_adap_global_get_vdev() != isp_dev->index) {
+		debug_isp_irq_out_count++;
 		return IRQ_HANDLED;
+	}
 
 	spin_lock_irqsave(&isp_dev->irq_lock, flags);
 
@@ -700,6 +713,13 @@ static irqreturn_t isp_subdev_irq_handler(int irq, void *dev)
 	if (status & 0x1) {
 		isp_dev->frm_cnt ++;
 		for (id = AML_ISP_STREAM_0; id < AML_ISP_STREAM_MAX; id++) {
+#ifdef DEBUG_TEST_MIPI_RESET
+			if (debug_test_mipi_reset) {
+				pr_err("debug_test_mipi_reset 1. no call to video irq handler\n");
+				continue;
+			}
+#endif
+
 			video = &isp_dev->video[id];
 			if (video->ops->cap_irq_handler)
 				video->ops->cap_irq_handler(video, status);
@@ -708,6 +728,9 @@ static irqreturn_t isp_subdev_irq_handler(int irq, void *dev)
 	}
 
 	spin_unlock_irqrestore(&isp_dev->irq_lock, flags);
+
+	debug_isp_irq_out_count++;
+
 #ifdef IRQ_TIME_DEBUG
 	end_time = ktime_get_real_ns();
 	diff = end_time - start_time;

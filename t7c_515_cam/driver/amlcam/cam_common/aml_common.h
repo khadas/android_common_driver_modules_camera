@@ -210,6 +210,7 @@ struct aml_video {
 	struct aml_control actrl;
 	void *priv;
 	int first_frame_logged;
+	int dq_check_timer_working;
 };
 
 int aml_subdev_register(struct aml_subdev *subdev);

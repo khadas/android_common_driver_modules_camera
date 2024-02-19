@@ -16,6 +16,7 @@
 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 *
 */
+#include "aml_cam.h"
 #include "aml_isp_ctrls.h"
 #include "aml_isp.h"
 
@@ -80,6 +81,14 @@ static const struct aml_format raw_support_format[] = {
 	{0, 0, 0, 0, 0, V4L2_PIX_FMT_SGRBG12, 1, 16},
 };
 
+static struct cam_device * aml_video_to_cam_device(struct aml_video *video)
+{
+	struct v4l2_device *p_v4l2_dev = video->v4l2_dev;
+	struct cam_device * cam_dev = NULL;
+	cam_dev = container_of(p_v4l2_dev, struct cam_device, v4l2_dev);
+	return cam_dev;
+}
+
 static int isp_cap_stream_bilateral_cfg(struct aml_video *vd, struct aml_buffer *buff)
 {
 	struct isp_dev_t *isp_dev = vd->priv;
@@ -142,6 +151,8 @@ static int isp_cap_irq_handler(void *video, int status)
 	unsigned long flags;
 	struct aml_video *vd = video;
 	const int video_drop_frame_cnt = 3;
+	struct cam_device * cam_dev;
+	cam_dev = aml_video_to_cam_device(vd);
 
 	struct aml_buffer *b_current = vd->b_current;
 	struct isp_dev_t *isp_dev = vd->priv;
@@ -154,6 +165,12 @@ static int isp_cap_irq_handler(void *video, int status)
 	if (vd->status != AML_ON) {
 		spin_unlock_irqrestore(&vd->buff_list_lock, flags);
 		return 0;
+	}
+
+	if (1 == vd->dq_check_timer_working) {
+		del_timer(&cam_dev->dq_check_timer);
+		pr_info("stop dq check timer");
+		vd->dq_check_timer_working = 0;
 	}
 
 	// drop frame; multiple videos dq & q; open another video while one video is streaming
