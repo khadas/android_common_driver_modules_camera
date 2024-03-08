@@ -491,6 +491,62 @@ static int cam_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int cam_power_suspend(struct device *dev)
+{
+	struct cam_device *cam_dev;
+
+	cam_dev = dev_get_drvdata(dev);
+
+	switch (cam_dev->index) {
+		case AML_CAM_0:
+		case AML_CAM_1:
+			csiphy_subdev_suspend(&cam_dev->csiphy_dev);
+			adap_subdev_suspend(&cam_dev->adap_dev);
+		break;
+		default:
+			dev_err(cam_dev->dev, "Error camera index: %u\n", cam_dev->index);
+		break;
+	}
+
+	dev_info(dev, "suspend\n");
+
+	return 0;
+}
+
+static int cam_power_resume(struct device *dev)
+{
+	struct cam_device *cam_dev;
+
+	cam_dev = dev_get_drvdata(dev);
+
+	switch (cam_dev->index) {
+		case AML_CAM_0:
+		case AML_CAM_1:
+			csiphy_subdev_resume(&cam_dev->csiphy_dev);
+			adap_subdev_resume(&cam_dev->adap_dev);
+		break;
+		default:
+			dev_err(cam_dev->dev, "Error camera index: %u\n", cam_dev->index);
+		break;
+	}
+
+	dev_info(dev, "resume\n");
+
+	return 0;
+}
+
+static void cam_power_shutdown(struct platform_device *pdev)
+{
+	cam_power_suspend(&pdev->dev);
+}
+
+static const struct dev_pm_ops cam_pm_ops = {
+	.suspend = cam_power_suspend,
+	.resume = cam_power_resume,
+	.runtime_suspend = cam_power_suspend,
+	.runtime_resume = cam_power_resume,
+};
+
 static const struct of_device_id cam_of_table[] = {
 	{.compatible = "amlogic, yuvcamera"},
 	{ },
@@ -501,8 +557,10 @@ MODULE_DEVICE_TABLE(of, cam_of_table);
 static struct platform_driver cam_driver = {
 	.probe = cam_probe,
 	.remove = cam_remove,
+	.shutdown = cam_power_shutdown,
 	.driver = {
 		.name = "aml_camera_yuv",
+		.pm = &cam_pm_ops,
 		.of_match_table = cam_of_table,
 	},
 };

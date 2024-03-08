@@ -905,6 +905,26 @@ static const struct media_entity_operations adap_subdev_media_ops = {
 	.link_validate = adap_v4l2_subdev_link_validate,
 };
 
+void adap_subdev_suspend(struct adapter_dev_t *adap_dev)
+{
+	dev_info(adap_dev->dev, "%s in\n", __func__);
+	if (__clk_is_enabled(adap_dev->adap_clk))
+		clk_disable_unprepare(adap_dev->adap_clk);
+	dev_info(adap_dev->dev, "%s out \n", __func__);
+}
+
+int adap_subdev_resume(struct adapter_dev_t *adap_dev)
+{
+	int rtn = 0;
+
+	if (!__clk_is_enabled(adap_dev->adap_clk)) {
+		rtn = clk_prepare_enable(adap_dev->adap_clk);
+		if (rtn)
+			dev_err(adap_dev->dev, "Error to enable adap_clk(isp) clk\n");
+	}
+	return rtn;
+}
+
 int aml_adap_subdev_register(struct adapter_dev_t *adap_dev)
 {
 	int rtn = -1;

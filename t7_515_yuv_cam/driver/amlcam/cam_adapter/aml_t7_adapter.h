@@ -209,6 +209,9 @@ struct adapter_task_t {
 	int path_select;
 };
 
+void adap_subdev_suspend(struct adapter_dev_t *adap_dev);
+int adap_subdev_resume(struct adapter_dev_t *adap_dev);
+
 int aml_adap_subdev_init(void *c_dev);
 void aml_adap_subdev_deinit(void *c_dev);
 int aml_adap_video_register(struct adapter_dev_t *adap_dev);

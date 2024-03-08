@@ -689,9 +689,6 @@ static int adap_subdev_hw_init(struct adapter_dev_t *adap_dev,
 
 	aml_adap_global_devno(adap_dev->index);
 
-	if (adap_dev->ops->hw_reset)
-		adap_dev->ops->hw_reset(adap_dev);
-
 	if (adap_dev->ops->hw_init)
 		adap_dev->ops->hw_init(adap_dev);
 
@@ -1023,6 +1020,9 @@ int aml_adap_subdev_register(struct adapter_dev_t *adap_dev)
 	rtn = aml_subdev_register(subdev);
 	if (rtn)
 		goto error_rtn;
+
+	if (adap_dev->ops->hw_reset)
+		adap_dev->ops->hw_reset(adap_dev);
 
 	dev_info(adap_dev->dev, "ADAP%u: register subdev\n", adap_dev->index);
 

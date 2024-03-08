@@ -534,6 +534,37 @@ static const struct media_entity_operations csiphy_subdev_media_ops = {
 	.link_validate = csiphy_v4l2_subdev_link_validate,
 };
 
+void csiphy_subdev_suspend(struct csiphy_dev_t *csiphy_dev)
+{
+	dev_info(csiphy_dev->dev, "%s in\n", __func__);
+
+	if (__clk_is_enabled(csiphy_dev->mipi_clk0))
+		clk_disable_unprepare(csiphy_dev->mipi_clk0);
+
+	pm_runtime_put_sync(csiphy_dev->dev);
+	pm_runtime_disable(csiphy_dev->dev);
+	dev_pm_domain_detach(csiphy_dev->dev, true);
+
+	dev_info(csiphy_dev->dev, "%s out \n", __func__);
+}
+
+int csiphy_subdev_resume(struct csiphy_dev_t *csiphy_dev)
+{
+	int rtn = 0;
+	dev_pm_domain_attach(csiphy_dev->dev, true);
+
+	pm_runtime_enable(csiphy_dev->dev);
+	pm_runtime_get_sync(csiphy_dev->dev);
+
+	if (!__clk_is_enabled(csiphy_dev->mipi_clk0)) {
+		rtn = clk_prepare_enable(csiphy_dev->mipi_clk0);
+		if (rtn)
+			dev_err(csiphy_dev->dev, "Error to enable csiphy_clk\n");
+	}
+
+	return rtn;
+}
+
 int aml_csiphy_subdev_register(struct csiphy_dev_t *csiphy_dev)
 {
 	int rtn = -1;
