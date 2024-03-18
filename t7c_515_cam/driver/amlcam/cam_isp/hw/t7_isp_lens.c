@@ -289,22 +289,22 @@ static void lswb_rad_cfg_base(struct isp_dev_t *isp_dev, void *base)
 static void lswb_rad_cfg_ext(struct isp_dev_t *isp_dev, void *base)
 {
 #ifdef T7C_CHIP
-		u32 val = 0;
+		u32 val = 0, len = 0;
 		aisp_base_cfg_t *base_cfg = base;
 		aisp_lut_fixed_cfg_t *lut_cfg = &base_cfg->fxlut_cfg;
 		u32 *ptr = (u32 *)isp_dev->radi_buff.vaddr[AML_PLANE_A];
 
-		val = ISP_ARRAY_SIZE(lut_cfg->lns_radext_lut129);
+		len = ISP_ARRAY_SIZE(lut_cfg->lns_radext_lut129);
 
 		ptr[0] = 0;
 		ptr[1] = 0xfe3b77c0;
-		memcpy((void *)(ptr + 2), lut_cfg->lns_radext_lut129, val * 4);
+		memcpy((void *)(ptr + 2), lut_cfg->lns_radext_lut129, len * 4);
 
 		val = (0 << 3)	| (1 << 2) | (0 << 1) | (1 << 0);
 		isp_hwreg_write(isp_dev, ISP_DMA_SRC1_CTL, val);
 
 		/* select task1 type and cmd length */
-		val = (1 << 31) | (1 << 30) | (val * 4 + 8 - 1);
+		val = (1 << 31) | (1 << 30) | (len * 4 + 8 - 1);
 		isp_hwreg_write(isp_dev, ISP_DMA_SRC1_PING_TASK0, val);
 
 		/* config ping store addr */
