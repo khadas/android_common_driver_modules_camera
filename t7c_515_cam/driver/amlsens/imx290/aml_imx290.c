@@ -214,14 +214,19 @@ static int imx290_set_gain(struct imx290 *imx290, u32 value)
 static int imx290_set_exposure(struct imx290 *imx290, u32 value)
 {
 	int ret;
+	int shs1_reg = value & 0xFFFF;
+	int shs2_reg = (value >> 16) & 0xFFFF;
 
-	ret = imx290_write_buffered_reg(imx290, IMX290_EXPOSURE, 2, value & 0xFFFF);
+	ret = imx290_write_buffered_reg(imx290, IMX290_EXPOSURE, 2, shs1_reg);
 	if (ret)
-		dev_err(imx290->dev, "Unable to write gain\n");
+		dev_err(imx290->dev, "Unable to write exposure reg\n");
 
-	if (imx290->enWDRMode)
-		ret = imx290_write_buffered_reg(imx290, 0x3024, 2, (value >> 16) & 0xFFFF);
-
+	if (imx290->enWDRMode) {
+		ret = imx290_write_buffered_reg(imx290, IMX290_EXPOSURE_SHS2, 2, shs2_reg);
+		//dev_info(imx290->dev,"expo 0x%x reg value: SHS1-f1-big 0x%x SHS2-f0-small 0x%x", value, shs1_reg , shs2_reg);
+		if (ret)
+			dev_err(imx290->dev, "Unable to write exposure SHS2 reg\n");
+	}
 	return ret;
 }
 
@@ -474,7 +479,6 @@ static int imx290_set_fmt(struct v4l2_subdev *sd,
 		format = &imx290->current_format;
 		imx290->current_mode = mode;
 		imx290->bpp = imx290_formats[i].bpp;
-		imx290->nlanes = 4;
 
 		if (imx290->link_freq)
 			__v4l2_ctrl_s_ctrl(imx290->link_freq, imx290_get_link_freq_index(imx290));
@@ -854,6 +858,7 @@ int imx290_init(struct i2c_client *client, void *sdrv)
 	imx290->client = client;
 	imx290->client->addr = IMX290_SLAVE_ID;
 	imx290->gpio = &sensor->gpio;
+	imx290->nlanes = 4;
 
 	imx290->regmap = devm_regmap_init_i2c(client, &imx290_regmap_config);
 	if (IS_ERR(imx290->regmap)) {

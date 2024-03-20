@@ -155,11 +155,19 @@ static int imx415_set_gain(struct imx415 *imx415, u32 value)
 static int imx415_set_exposure(struct imx415 *imx415, u32 value)
 {
 	int ret;
-	//dev_err(imx415->dev, "imx415_set_exposure = 0x%x \n", value);
+	int shr0_reg = value & 0xFFFF;
+	int shr1_reg = (value >> 16) & 0xFFFF;
 
-	ret = imx415_write_buffered_reg(imx415, IMX415_EXPOSURE, 2, value);
+	ret = imx415_write_buffered_reg(imx415, IMX415_EXPOSURE, 2, shr0_reg);
 	if (ret)
-		dev_err(imx415->dev, "Unable to write gain\n");
+		dev_err(imx415->dev, "Unable to write exposure reg\n");
+
+	if (imx415->enWDRMode) {
+		ret = imx415_write_buffered_reg(imx415, IMX415_EXPOSURE_SHR1, 2, shr1_reg);
+		//dev_info(imx415->dev,"expo 0x%x reg value: SHR0-F1-big 0x%x SHR1-f0-small 0x%x", value, shr0_reg , shr1_reg);
+		if (ret)
+			dev_err(imx415->dev, "Unable to write exposure SHR1 reg\n");
+	}
 
 	return ret;
 }
@@ -387,6 +395,8 @@ static int imx415_set_fmt(struct v4l2_subdev *sd,
 
 	mutex_unlock(&imx415->lock);
 
+	// do not compare enWDRMode to 1;
+	// for imx415. enWDRMode is 2; for imx290 enWDRMode is 1;
 	if (imx415->enWDRMode) {
 		/* Set init register settings */
 		ret = imx415_set_register_array(imx415, dol_4k_30fps_1440Mbps_4lane_10bits,
@@ -662,7 +672,7 @@ static int imx415_ctrls_init(struct imx415 *imx415)
 				V4L2_CID_GAIN, 0, 0xF0, 1, 0);
 
 	v4l2_ctrl_new_std(&imx415->ctrls, &imx415_ctrl_ops,
-				V4L2_CID_EXPOSURE, 0, 0xffff, 1, 0);
+				V4L2_CID_EXPOSURE, 0, 0x7fffffff, 1, 0);
 
 	imx415->link_freq = v4l2_ctrl_new_int_menu(&imx415->ctrls,
 					       &imx415_ctrl_ops,
