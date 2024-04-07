@@ -19,12 +19,12 @@
 #include <linux/of_platform.h>
 #include <linux/of_graph.h>
 
-#define IMX335_STANDBY	0x3000
-#define IMX335_REGHOLD	0x3001
-#define IMX335_GAIN		0x30e8
+#define IMX335_STANDBY  0x3000
+#define IMX335_REGHOLD  0x3001
+#define IMX335_GAIN     0x30e8
 #define IMX335_EXPOSURE 0x3058
-#define IMX335_ID		0x3305
-#define IMX335_SLAVE_ID	0x001A
+#define IMX335_ID       0x3305
+#define IMX335_SLAVE_ID 0x001A
 
 struct imx335_regval {
 	u16 reg;
@@ -96,9 +96,11 @@ static const struct imx335_regval imx335_1944p_linear_settings[] = {
 	{0x300C, 0x5B},
 	{0x300D, 0x40},
 	{0x3030, 0x94},
-	{0x3031, 0x11},
+	{0x3031, 0x11}, // vmax 0x1194
 	{0x3034, 0x26},
-	{0x3035, 0x02},
+	{0x3035, 0x02}, // hmax 0x0226
+	{0x3058, 0x09},
+	{0x3059, 0x00}, // shr0 0x09
 	{0x314C, 0xC0},
 	{0x315A, 0x06},
 	{0x316A, 0x7E},
