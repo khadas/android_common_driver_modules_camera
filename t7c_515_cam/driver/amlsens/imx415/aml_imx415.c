@@ -548,8 +548,7 @@ int imx415_power_suspend(struct device *dev)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct imx415 *imx415 = to_imx415(sd);
 
-	gpiod_set_value_cansleep(imx415->gpio->rst_gpio, 0);
-
+	imx415_power_off(imx415->dev, imx415->gpio);
 	return 0;
 }
 
@@ -559,8 +558,7 @@ int imx415_power_resume(struct device *dev)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct imx415 *imx415 = to_imx415(sd);
 
-	gpiod_set_value_cansleep(imx415->gpio->rst_gpio, 1);
-
+	imx415_power_on(imx415->dev, imx415->gpio);
 	return 0;
 }
 

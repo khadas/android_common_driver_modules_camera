@@ -543,6 +543,8 @@ static void cam_power_shutdown(struct platform_device *pdev)
 static const struct dev_pm_ops cam_pm_ops = {
 	.suspend = cam_power_suspend,
 	.resume = cam_power_resume,
+	.freeze = cam_power_suspend,
+	.restore = cam_power_resume,
 	.runtime_suspend = cam_power_suspend,
 	.runtime_resume = cam_power_resume,
 };

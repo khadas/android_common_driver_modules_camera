@@ -566,7 +566,7 @@ int ov5640_power_suspend(struct device *dev)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct ov5640 *ov5640 = to_ov5640(sd);
 
-	gpiod_set_value_cansleep(ov5640->gpio->rst_gpio, 0);
+	ov5640_power_off(dev, ov5640->gpio);
 
 	return 0;
 }
@@ -577,7 +577,7 @@ int ov5640_power_resume(struct device *dev)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct ov5640 *ov5640 = to_ov5640(sd);
 
-	gpiod_set_value_cansleep(ov5640->gpio->rst_gpio, 1);
+	ov5640_power_on(dev, ov5640->gpio);
 
 	return 0;
 }

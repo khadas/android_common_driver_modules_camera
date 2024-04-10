@@ -22,6 +22,7 @@
 
 #include "sensor_drv.h"
 #include "i2c_api.h"
+#include "mclk_api.h"
 
 struct amlsens *g_sensor[8];
 
@@ -94,8 +95,80 @@ static int sensor_power_resume(struct device *dev)
 	return 0;
 }
 
+static int sensor_power_restore(struct device *dev)
+{
+	int ret = 0;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct amlsens *sensor = sensor_get_ptr(client);
+
+	sensor->gpio.rst_gpio = devm_gpiod_get_optional(sensor->dev,
+						"reset",
+						GPIOD_OUT_LOW);
+	if (IS_ERR_OR_NULL(sensor->gpio.rst_gpio)) {
+		ret = PTR_ERR(sensor->gpio.rst_gpio);
+		dev_err(dev, "Cannot get rst_gpio gpio: %d\n", ret);
+	}
+
+	sensor->gpio.pwdn_gpio = devm_gpiod_get_optional(sensor->dev,
+						"pwdn",
+						GPIOD_OUT_LOW);
+	if (IS_ERR_OR_NULL(sensor->gpio.pwdn_gpio)) {
+		ret = PTR_ERR(sensor->gpio.pwdn_gpio);
+		dev_err(dev, "Cannot get pwdn gpio: %d\n", ret);
+	}
+
+	// workaround for mclk 24M clk; first set 37.125M; then disable mclk, then set to 24M;
+	{
+		mclk_enable(dev, 37125000);
+		// 30ms
+		usleep_range(30000, 31000);
+		mclk_disable(dev);
+		// 30ms
+		usleep_range(30000, 31000);
+	}
+
+	ret = sensor->sd_sdrv->sensor_power_resume(dev);
+	if (ret) {
+		dev_err(dev, "Error sensor power resume fail\n");
+	}
+
+	return ret;
+}
+
+static int sensor_power_freeze(struct device *dev)
+{
+	int ret = 0;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct amlsens *sensor = sensor_get_ptr(client);
+
+	ret = sensor->sd_sdrv->sensor_power_suspend(dev);
+	if (ret) {
+		dev_err(dev, "Error sensor power resume fail\n");
+	}
+
+	if (!IS_ERR_OR_NULL(sensor->gpio.rst_gpio)) {
+		dev_info(dev, "gpio put reset");
+		devm_gpiod_put(dev, sensor->gpio.rst_gpio);
+		sensor->gpio.rst_gpio = NULL;
+	}
+
+	if (!IS_ERR_OR_NULL(sensor->gpio.pwdn_gpio)) {
+		dev_info(dev, "gpio put pwdn_gpio");
+		devm_gpiod_put(dev, sensor->gpio.pwdn_gpio);
+		sensor->gpio.pwdn_gpio = NULL;
+	}
+
+	return ret;
+}
+
 static const struct dev_pm_ops sensor_pm_ops = {
-	SET_RUNTIME_PM_OPS(sensor_power_suspend, sensor_power_resume, NULL)};
+	.suspend = sensor_power_suspend,
+	.resume = sensor_power_resume,
+	.freeze = sensor_power_freeze,
+	.restore = sensor_power_restore,
+	.runtime_suspend = sensor_power_suspend,
+	.runtime_resume = sensor_power_resume,
+};
 
 static int sensor_parse_power(struct amlsens *sensor)
 {
