@@ -37,14 +37,14 @@
 #define IMX577_EXPOSURE_MIN      8
 #define IMX577_EXPOSURE_OFFSET   22
 #define IMX577_EXPOSURE_STEP     1
-#define IMX577_EXPOSURE_DEFAULT  0x0c16
+#define IMX577_EXPOSURE_DEFAULT  0x0c16 // keep same with initial value of reg 0x0202
 
 /* Analog gain control */
 #define IMX577_AGAIN             0x0204
 #define IMX577_AGAIN_MIN         0
 #define IMX577_AGAIN_MAX         978
 #define IMX577_AGAIN_STEP        1
-#define IMX577_AGAIN_DEFAULT     0
+#define IMX577_AGAIN_DEFAULT     0     // keep same with initial value of reg 0x0204
 
 /* Group hold register */
 #define IMX577_REG_HOLD          0x0104
@@ -127,7 +127,6 @@ struct imx577 {
 	struct clk *xclk;
 	struct regmap *regmap;
 
-	u32 vblank;
 	u32 enWDRMode;
 
 	struct i2c_client *client;
@@ -155,6 +154,8 @@ struct imx577 {
 	struct mutex mutex;
 
 	bool streaming;
+	u32 exposure_cache;
+	u32 gain_cache;
 };
 
 static const struct regmap_config imx577_regmap_config = {

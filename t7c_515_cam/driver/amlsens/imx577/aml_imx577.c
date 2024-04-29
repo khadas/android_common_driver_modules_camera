@@ -158,18 +158,20 @@ static int imx577_write_reg_be_first(struct imx577 *imx577, u16 address_low,
 static int imx577_update_controls(struct imx577 *imx577,
 				  const struct imx577_mode *mode)
 {
-	int ret;
+	int ret = 0;
+	pr_info("update controls");
 
-	ret = __v4l2_ctrl_s_ctrl(imx577->link_freq_ctrl, mode->link_freq_index);
-	if (ret)
-		return ret;
+	if (imx577->link_freq_ctrl)
+		ret = __v4l2_ctrl_s_ctrl(imx577->link_freq_ctrl, mode->link_freq_index);
 
-	ret = __v4l2_ctrl_s_ctrl(imx577->hblank_ctrl, mode->hblank);
-	if (ret)
-		return ret;
+	if (imx577->hblank_ctrl)
+		ret = __v4l2_ctrl_s_ctrl(imx577->hblank_ctrl, mode->hblank);
 
-	return __v4l2_ctrl_modify_range(imx577->vblank_ctrl, mode->vblank_min,
-					mode->vblank_max, 1, mode->vblank);
+	if (imx577->vblank_ctrl)
+		ret = __v4l2_ctrl_modify_range(imx577->vblank_ctrl, mode->vblank_min,
+			mode->vblank_max, 1, mode->vblank);
+
+	return ret;
 }
 
 /**
@@ -182,10 +184,7 @@ static int imx577_update_controls(struct imx577 *imx577,
  */
 static int imx577_update_exp_gain(struct imx577 *imx577, u32 exposure, u32 gain)
 {
-	u32 lpfr;
 	int ret;
-
-	lpfr = imx577->vblank + imx577->current_mode->height;
 
 	//pr_info( "Set exp (reg) 0x%x, again(reg) 0x%x , lpfr(reg) 0x%x",
 	//	exposure, gain, lpfr);
@@ -196,19 +195,19 @@ static int imx577_update_exp_gain(struct imx577 *imx577, u32 exposure, u32 gain)
 		return ret;
 	}
 
-	ret = imx577_write_reg_be_first(imx577, IMX577_REG_LPFR, 2, lpfr);
-	if (ret) {
-		pr_err("error leave");
-		goto error_release_group_hold;
-	}
-
 	ret = imx577_write_reg_be_first(imx577, IMX577_EXPOSURE, 2, exposure);
 	if (ret) {
 		pr_err("error leave");
 		goto error_release_group_hold;
 	}
+	imx577->exposure_cache = exposure;
 
 	ret = imx577_write_reg_be_first(imx577, IMX577_AGAIN, 2, gain);
+	if (ret) {
+		pr_err("error leave");
+		goto error_release_group_hold;
+	}
+	imx577->gain_cache = gain;
 
 error_release_group_hold:
 	imx577_write_reg_be_first(imx577, IMX577_REG_HOLD, 1, 0);
@@ -222,7 +221,7 @@ static int imx577_set_gain(struct imx577 *imx577, u32 value)
 	int ret;
 	//pr_info( "new analog gain 0x%x", value);
 
-	ret = imx577_update_exp_gain(imx577, imx577->exp_ctrl->val, value);
+	ret = imx577_update_exp_gain(imx577, imx577->exposure_cache, value);
 	if (ret)
 		dev_err(imx577->dev, "Unable to write gain\n");
 
@@ -234,7 +233,7 @@ static int imx577_set_exposure(struct imx577 *imx577, u32 value)
 	int ret;
 	//pr_info( "new exp 0x%x", value);
 
-	ret = imx577_update_exp_gain(imx577, value, imx577->again_ctrl->val);
+	ret = imx577_update_exp_gain(imx577, value, imx577->gain_cache);
 	if (ret)
 		dev_err(imx577->dev, "Unable to write gain\n");
 
@@ -273,16 +272,6 @@ static int imx577_set_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_HBLANK:
 		break;
 	case V4L2_CID_VBLANK:
-		imx577->vblank = imx577->vblank_ctrl->val;
-
-		pr_info( "Received vblank %u, new lpfr %u",
-			imx577->vblank,
-			imx577->vblank + imx577->current_mode->height);
-
-		ret = __v4l2_ctrl_modify_range(imx577->exp_ctrl,
-					       IMX577_EXPOSURE_MIN,
-					       imx577->vblank + imx577->current_mode->height - IMX577_EXPOSURE_OFFSET,
-					       1, IMX577_EXPOSURE_DEFAULT);
 		break;
 	case V4L2_CID_AML_CSI_LANES:
 		break;
@@ -459,6 +448,9 @@ static int imx577_set_pad_format(struct v4l2_subdev *sd,
 
 		framefmt = v4l2_subdev_get_try_format(sd, cfg, fmt->pad);
 		*framefmt = fmt->format;
+		mutex_unlock(&imx577->mutex);
+		return 0;
+
 	} else {
 		imx577->current_mode = mode;
 		ret = imx577_update_controls(imx577, mode);
@@ -514,15 +506,8 @@ static int imx577_start_streaming(struct imx577 *imx577)
 {
 	int ret;
 
-	/* Setup handler will write actual exposure and gain */
-	ret =  v4l2_ctrl_handler_setup(imx577->sd.ctrl_handler);
-	if (ret) {
-		dev_err(imx577->dev, "fail to setup handler");
-		return ret;
-	}
-
 	/* Delay is required before streaming*/
-	usleep_range(7400, 8000);
+	//usleep_range(7400, 8000);
 
 	/* Start streaming */
 	ret = imx577_write_reg_be_first(imx577, IMX577_REG_MODE_SELECT,
@@ -604,7 +589,7 @@ int imx577_power_on(struct device *dev, struct sensor_gpio *gpio)
 	if (ret < 0)
 		dev_err(dev, "set mclk fail\n");
 
-	usleep_range(300, 310);
+	usleep_range(30000, 31000);
 
 	return 0;
 }
@@ -741,39 +726,33 @@ static int imx577_ctrls_init(struct imx577 *imx577)
 {
 	struct v4l2_ctrl_handler *ctrl_hdlr = &imx577->ctrl_handler;
 	const struct imx577_mode *mode = imx577->current_mode;
-	u32 lpfr;
 	int ret;
 
 	ret = v4l2_ctrl_handler_init(ctrl_hdlr, 9);
 	if (ret)
 		return ret;
 
-	/* Serialize controls with sensor device */
-	ctrl_hdlr->lock = &imx577->mutex;
-
 	/* Initialize exposure and gain */
 	imx577->again_ctrl = v4l2_ctrl_new_std(ctrl_hdlr,
 					       &imx577_ctrl_ops,
 					       V4L2_CID_GAIN,
 					       IMX577_AGAIN_MIN,
-					       IMX577_AGAIN_MAX,
+					       0xffff,
 					       IMX577_AGAIN_STEP,
 					       IMX577_AGAIN_DEFAULT);
 
-	lpfr = mode->vblank + mode->height;
 	imx577->exp_ctrl = v4l2_ctrl_new_std(ctrl_hdlr,
 					     &imx577_ctrl_ops,
 					     V4L2_CID_EXPOSURE,
 					     IMX577_EXPOSURE_MIN,
-					     lpfr - IMX577_EXPOSURE_OFFSET,
+					     0x7fffffff,
 					     IMX577_EXPOSURE_STEP,
 					     IMX577_EXPOSURE_DEFAULT);
 
 	imx577->link_freq_ctrl = v4l2_ctrl_new_int_menu(ctrl_hdlr,
 							&imx577_ctrl_ops,
 							V4L2_CID_LINK_FREQ,
-							ARRAY_SIZE(link_freq) -
-							1,
+							ARRAY_SIZE(link_freq) - 1,
 							mode->link_freq_index,
 							link_freq);
 	if (imx577->link_freq_ctrl)
@@ -798,6 +777,8 @@ static int imx577_ctrls_init(struct imx577 *imx577)
 						mode->vblank_min,
 						mode->vblank_max,
 						1, mode->vblank);
+	if (imx577->hblank_ctrl)
+		imx577->hblank_ctrl->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
 	imx577->hblank_ctrl = v4l2_ctrl_new_std(ctrl_hdlr,
 						&imx577_ctrl_ops,
@@ -865,6 +846,8 @@ int imx577_init(struct i2c_client *client, void *sdrv)
 	imx577->client = client;
 	imx577->client->addr = IMX577_SLAVE_ID;
 	imx577->gpio = &sensor->gpio;
+	imx577->exposure_cache = IMX577_EXPOSURE_DEFAULT;
+	imx577->gain_cache = IMX577_AGAIN_DEFAULT;
 
 	imx577->regmap = devm_regmap_init_i2c(client, &imx577_regmap_config);
 	if (IS_ERR(imx577->regmap)) {
@@ -888,16 +871,18 @@ int imx577_init(struct i2c_client *client, void *sdrv)
 
 	/*
 	 * Initialize the frame format. In particular, imx577->current_mode
-	 * and imx577->bpp are set to defaults: imx577_calc_pixel_rate() call
-	 * below in imx577_ctrls_init relies on these fields.
+	 * imx577_ctrls_init relies on these fields.
 	 */
-	imx577_init_pad_cfg(&imx577->sd, NULL);
+	/* Set default mode to max resolution */
+	imx577->current_mode = &supported_mode[setting_index];
 
 	ret = imx577_ctrls_init(imx577);
 	if (ret) {
 		dev_err(imx577->dev, "Error ctrls init\n");
 		goto free_ctrl;
 	}
+
+	imx577_init_pad_cfg(&imx577->sd, NULL);
 
 	ret = imx577_register_subdev(imx577);
 	if (ret) {
