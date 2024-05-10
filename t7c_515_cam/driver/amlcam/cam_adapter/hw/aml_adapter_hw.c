@@ -16,11 +16,6 @@
 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 *
 */
-#ifdef pr_fmt
-#undef pr_fmt
-#endif
-#define pr_fmt(fmt)  "aml-adap:%s:%d: " fmt, __func__, __LINE__
-
 #include <linux/io.h>
 #include <linux/delay.h>
 #include <asm/types.h>
@@ -28,13 +23,14 @@
 #include "../aml_adapter.h"
 #include "aml_adapter_hw.h"
 #include "aml_misc.h"
+#include "aml_debug.h"
 
 static int ceil_upper(int val, int mod)
 {
 	int ret = -1;
 
 	if ((val == 0) || (mod == 0)) {
-		pr_err("Error input a invalid value\n");
+		aml_cam_log_err("Error input a invalid value\n");
 		return ret;
 	}
 
@@ -80,7 +76,7 @@ static void __iomem *module_get_base(void *a_dev, int module)
 		m_base = adap_dev->adap + PROC_BASE;
 	break;
 	default:
-		pr_err("Error module: %d\n", module);
+		aml_cam_log_err("Error module: %d\n", module);
 	break;
 	}
 
@@ -97,7 +93,7 @@ static int module_reg_write(void *a_dev, int module, u32 addr, u32 val)
 
 	m_base = module_get_base(a_dev, module);
 	if (!m_base) {
-		pr_err("Failed to get %d module base\n", module);
+		aml_cam_log_err("Failed to get %d module base\n", module);
 		return rtn;
 	}
 
@@ -113,7 +109,7 @@ static int module_reg_read(void *a_dev, int module, u32 addr, u32 *val)
 
 	m_base = module_get_base(a_dev, module);
 	if (!m_base) {
-		pr_err("Failed to get %d module base\n", module);
+		aml_cam_log_err("Failed to get %d module base\n", module);
 		return rtn;
 	}
 
@@ -131,7 +127,7 @@ static int module_update_bits(void *a_dev, int module,
 	u32 temp = 0;
 
 	if (start + len > 32) {
-		pr_err("Error input start and len\n");
+		aml_cam_log_err("Error input start and len\n");
 		return 0;
 	} else if (start == 0 && len == 32) {
 		rtn = module_reg_write(a_dev, module, addr, val);
@@ -140,7 +136,7 @@ static int module_update_bits(void *a_dev, int module,
 
 	rtn = module_reg_read(a_dev, module, addr, &orig);
 	if (rtn) {
-		pr_err("Error to read: addr 0x%x\n", addr);
+		aml_cam_log_err("Error to read: addr 0x%x\n", addr);
 		return rtn;
 	}
 
@@ -156,7 +152,7 @@ static int module_update_bits(void *a_dev, int module,
 		rtn = 0;
 
 	if (rtn)
-		pr_err("Error update bits: module %d, addr 0x%08x, temp 0x%08x\n",
+		aml_cam_log_err("Error update bits: module %d, addr 0x%08x, temp 0x%08x\n",
 					module, addr, temp);
 
 	return rtn;
@@ -190,7 +186,7 @@ static int adap_get_pixel_depth(void *a_param)
 		depth = 16;
 	break;
 	default:
-		pr_err("Error to support format\n");
+		aml_cam_log_err("Error to support format\n");
 	break;
 	}
 
@@ -308,7 +304,7 @@ static int adap_ddr_mode_cfg(void *a_dev)
 	//vfifo full hold
 	module_update_bits(a_dev, ALIGN_MD, MIPI_ADAPT_ALIG_CNTL10, 0xFF, 24, 8);
 
-	pr_debug("ADAP%u: ddr new cfg\n", adap_dev->index);
+	aml_cam_log_dbg("ADAP%u: ddr new cfg\n", adap_dev->index);
 
 	return 0;
 }
@@ -1241,7 +1237,7 @@ static int adap_hw_init(void *a_dev)
 	if (rtn)
 		return rtn;
 
-	pr_info("ADAP%u: hw init\n", adap_dev->index);
+	aml_cam_log_info("ADAP%u: hw init\n", adap_dev->index);
 
 #ifdef T7C_CHIP
 	module_update_bits(a_dev, ALIGN_MD, MIPI_ADAPT_FE_MUX_CTL0, adap_dev->index, 24, 4);
@@ -1420,7 +1416,7 @@ static int adap_rd_set_fmt(struct aml_video *video, struct aml_format *fmt)
 
 	adap_ddr_mode_cfg(video->priv);
 
-	pr_info("ADAP%u: hsize_mipi %d, pixel_bit %d, line_size %d\n",
+	aml_cam_log_info("ADAP%u: hsize_mipi %d, pixel_bit %d, line_size %d\n",
 				adap_dev->index, hsize_mipi, pixel_bit, temp);
 
 	return 0;
@@ -1560,7 +1556,7 @@ static void adap_hw_reset(void *a_dev)
 
 	adap_module_reset(a_dev);
 
-	pr_info("ADAP%u: hw reset\n", adap_dev->index);
+	aml_cam_log_info("ADAP%u: hw reset\n", adap_dev->index);
 }
 
 static u64 adap_hw_timestamp(void *a_dev)
@@ -1585,7 +1581,7 @@ static int adap_hw_start(void *a_dev)
 
 	adap_frontend_start(a_dev);
 
-	pr_info("ADAP%u: hw start\n", adap_dev->index);
+	aml_cam_log_info("ADAP%u: hw start\n", adap_dev->index);
 
 	return 0;
 }
@@ -1596,7 +1592,7 @@ static void adap_hw_stop(void *a_dev)
 
 	adap_frontend_stop(a_dev);
 
-	pr_info("ADAP%u: hw stop\n", adap_dev->index);
+	aml_cam_log_info("ADAP%u: hw stop\n", adap_dev->index);
 }
 
 static u32 *adap_fe_status(void *a_dev)

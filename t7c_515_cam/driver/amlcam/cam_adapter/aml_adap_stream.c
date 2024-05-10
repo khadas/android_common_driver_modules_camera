@@ -212,7 +212,7 @@ int aml_adap_video_register(struct adapter_dev_t *adap_dev)
 
 		rtn = aml_video_register(video);
 		if (rtn) {
-			dev_err(video->dev, "Failed to register stream-%d: %d\n", id, rtn);
+			aml_cam_log_err("Failed to register stream-%d: %d\n", id, rtn);
 			break;
 		}
 	}

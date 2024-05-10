@@ -29,6 +29,7 @@
 #include <media/media-entity.h>
 
 #include "aml_common.h"
+#include "aml_debug.h"
 
 enum {
 	AML_CSIPHY_PAD_SINK = 0,

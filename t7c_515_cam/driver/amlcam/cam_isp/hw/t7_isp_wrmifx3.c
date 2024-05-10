@@ -91,7 +91,7 @@ void isp_wrmifx3_mirror_enable(struct isp_dev_t *isp_dev, u32 idx, u32 enable)
 	u32 raddr = 0;
 
 	if (idx > 3) {
-		pr_err("Error input wmif index\n");
+		aml_cam_log_err("Error input wmif index\n");
 		return;
 	}
 
@@ -110,7 +110,7 @@ void isp_wrmifx3_flip_enable(struct isp_dev_t *isp_dev, u32 idx, u32 enable)
 	u32 raddr = 0;
 
 	if (idx > 3) {
-		pr_err("Error input wmif index\n");
+		aml_cam_log_err("Error input wmif index\n");
 		return;
 	}
 
@@ -134,7 +134,7 @@ void isp_wrmifx3_cfg_frm_size(struct isp_dev_t *isp_dev, u32 idx,
 	u32 bits_node = 0;
 
 	if (idx > 3) {
-		pr_err("Error input wmif index\n");
+		aml_cam_log_err("Error input wmif index\n");
 		return;
 	}
 
@@ -205,7 +205,7 @@ void isp_wrmifx3_cfg_frm_size(struct isp_dev_t *isp_dev, u32 idx,
 
 	stride = (width * bpp + 127) >> 7;
 	fmt->stride = ((width * bpp + 127) & (~(127))) / 8;
-	// pr_info("wrmifx3: width %d, bpp %d, stride %d", width, bpp, fmt->stride);
+	// aml_cam_log_info("wrmifx3: width %d, bpp %d, stride %d", width, bpp, fmt->stride);
 
 	switch (fmt->nplanes) {
 	case 2:
@@ -248,7 +248,7 @@ void isp_wrmifx3_cfg_frm_size(struct isp_dev_t *isp_dev, u32 idx,
 		isp_reg_update_bits(isp_dev, raddr, 0, 24, 3);
 		break;
 	default:
-		pr_err("Error input stream index\n");
+		aml_cam_log_err("Error input stream index\n");
 		break;
 	}
 }
@@ -261,7 +261,7 @@ void isp_wrmifx3_cfg_frm_buff(struct isp_dev_t *isp_dev, u32 idx,
 	struct isp_global_info *g_info = isp_global_get_info();
 
 	if (idx > 3) {
-		pr_err("Error input wmif index\n");
+		aml_cam_log_err("Error input wmif index\n");
 		return;
 	}
 
@@ -282,7 +282,7 @@ void isp_wrmifx3_cfg_frm_buff(struct isp_dev_t *isp_dev, u32 idx,
 				isp_reg_write(isp_dev, raddr, paddr);
 			break;
 		default:
-			pr_err("Error input stream index\n");
+			aml_cam_log_err("Error input stream index\n");
 			break;
 	}
 }
@@ -384,7 +384,7 @@ void isp_wrmifx3_cfg_slice(struct isp_dev_t *isp_dev, u32 idx, struct aml_slice 
 void isp_wrmifx3_autoacc_num(struct isp_dev_t *isp_dev, u32 idx, u32 num)
 {
 	if (idx > 2) {
-		pr_err("Error input wrmif index\n");
+		aml_cam_log_err("Error input wrmif index\n");
 		return;
 	}
 
@@ -397,7 +397,7 @@ void isp_wrmifx3_autoacc_num(struct isp_dev_t *isp_dev, u32 idx, u32 num)
 void isp_wrmifx3_autoacc_enable(struct isp_dev_t *isp_dev, u32 idx, u32 enable)
 {
 	if (idx > 2) {
-		pr_err("Error input wrmif index\n");
+		aml_cam_log_err("Error input wrmif index\n");
 		return;
 	}
 
@@ -410,7 +410,7 @@ void isp_wrmifx3_autoacc_enable(struct isp_dev_t *isp_dev, u32 idx, u32 enable)
 void isp_wrmifx3_module_enable(struct isp_dev_t *isp_dev, u32 idx, u32 enable, u32 force)
 {
 	if (idx > 3) {
-		pr_err("Error input wmif index\n");
+		aml_cam_log_err("Error input wmif index\n");
 		return;
 	}
 
@@ -423,7 +423,7 @@ void isp_wrmifx3_module_enable(struct isp_dev_t *isp_dev, u32 idx, u32 enable, u
 void isp_wrmifx3_module_stat(struct isp_dev_t *isp_dev, u32 idx, u32 *val)
 {
 	if (idx > 3) {
-		pr_err("Error input wmif index\n");
+		aml_cam_log_err("Error input wmif index\n");
 		return;
 	}
 

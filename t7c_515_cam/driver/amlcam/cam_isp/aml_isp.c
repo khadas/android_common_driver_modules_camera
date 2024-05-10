@@ -42,10 +42,6 @@ static struct isp_dev_t *g_isp_dev[4];
 volatile uint32_t debug_isp_irq_in_count = 0;
 volatile uint32_t debug_isp_irq_out_count = 0;
 
-#ifdef DEBUG_TEST_MIPI_RESET
-volatile int debug_test_mipi_reset = 1;
-#endif
-
 static const struct aml_format isp_subdev_formats[] = {
 	{0, 0, 0, 0, MEDIA_BUS_FMT_SBGGR8_1X8, 0, 1, 8},
 	{0, 0, 0, 0, MEDIA_BUS_FMT_SGBRG8_1X8, 0, 1, 8},
@@ -90,7 +86,7 @@ void parse_param(
 		if (*token == '\0')
 			continue;
 		parm[n++] = token;
-		pr_debug("%s %d of parm : %s \n", __func__, n, token);
+		aml_cam_log_dbg("%s %d of parm : %s \n", __func__, n, token);
 	}
 }
 
@@ -140,9 +136,9 @@ ssize_t reg_write(
 		reg_val = val;
 		if (isp_dev->ops->hw_write) {
 			isp_dev->ops->hw_write(isp_dev, (isp_sw_base + (reg_addr << 2)), reg_val);
-			pr_err("ISP WRITE[0x%x]=0x%08x\n", reg_addr, reg_val);
+			aml_cam_log_err("ISP WRITE[0x%x]=0x%08x\n", reg_addr, reg_val);
 		} else {
-			pr_err("%s need init isp dev ops first \n", __func__);
+			aml_cam_log_err("%s need init isp dev ops first \n", __func__);
 			ret = -EINVAL;
 			goto Err;
 		}
@@ -154,14 +150,14 @@ ssize_t reg_write(
 		reg_addr = val;
 		if (isp_dev->ops->hw_read) {
 			reg_val = isp_dev->ops->hw_read(isp_dev, (isp_sw_base + (reg_addr << 2)));
-			pr_err("ISP READ[0x%x]=0x%08x\n", reg_addr, reg_val);
+			aml_cam_log_err("ISP READ[0x%x]=0x%08x\n", reg_addr, reg_val);
 		} else {
-			pr_err("%s need init isp dev ops first \n", __func__);
+			aml_cam_log_err("%s need init isp dev ops first \n", __func__);
 			ret = -EINVAL;
 			goto Err;
 		}
 	} else {
-		pr_err("unsupprt cmd!\n");
+		aml_cam_log_err("unsupprt cmd!\n");
 	}
 Err:
 	kfree(buf_orig);
@@ -173,7 +169,7 @@ DEVICE_ATTR(reg, S_IRUGO | S_IWUSR, reg_read, reg_write);
 struct isp_dev_t *isp_subdrv_get_dev(int index)
 {
 	if (index >= 4) {
-		pr_err("err isp index num\n");
+		aml_cam_log_err("err isp index num\n");
 	}
 
 	return g_isp_dev[index];
@@ -212,7 +208,7 @@ static int isp_subdrv_reg_buf_alloc(struct isp_dev_t *isp_dev)
 	isp_dev->radi_buff.addr[AML_PLANE_A] = paddr;
 	isp_dev->radi_buff.vaddr[AML_PLANE_A] = virtaddr;
 
-	pr_debug("reg alloc\n");
+	aml_cam_log_dbg("reg alloc\n");
 
 	return 0;
 }
@@ -252,7 +248,7 @@ static int isp_subdrv_reg_buf_free(struct isp_dev_t *isp_dev)
 	isp_dev->radi_buff.addr[AML_PLANE_A] = 0x0000;
 	isp_dev->radi_buff.vaddr[AML_PLANE_A] = NULL;
 
-	pr_debug("reg free\n");
+	aml_cam_log_dbg("reg free\n");
 
 	return 0;
 }
@@ -275,7 +271,7 @@ static int isp_subdev_ptnr_buf_alloc(struct isp_dev_t *isp_dev, struct aml_forma
 
 	rtn = aml_subdev_cma_alloc(isp_dev->pdev, &paddr, virtaddr, bsize);
 	if (rtn != 0) {
-		pr_err("Failed to alloc ptnr buff\n");
+		aml_cam_log_err("Failed to alloc ptnr buff\n");
 		return -1;
 	}
 
@@ -286,7 +282,7 @@ static int isp_subdev_ptnr_buf_alloc(struct isp_dev_t *isp_dev, struct aml_forma
 
 	isp_dev->ops->hw_cfg_ptnr_mif_buf(isp_dev, &isp_dev->ptnr_buff);
 
-	pr_info("ptnr alloc\n");
+	aml_cam_log_info("ptnr alloc\n");
 
 	return 0;
 }
@@ -307,7 +303,7 @@ static int isp_subdev_ptnr_buf_free(struct isp_dev_t *isp_dev)
 	isp_dev->ptnr_buff.addr[AML_PLANE_A] = 0x0000;
 	isp_dev->ptnr_buff.vaddr[AML_PLANE_A] = NULL;
 
-	pr_info("ptnr free\n");
+	aml_cam_log_info("ptnr free\n");
 
 	return 0;
 }
@@ -364,7 +360,7 @@ static int isp_subdev_mcnr_buf_alloc(struct isp_dev_t *isp_dev, struct aml_forma
 
 	rtn = aml_subdev_cma_alloc(isp_dev->pdev, &paddr, virtaddr, bsize);
 	if (rtn != 0) {
-		pr_err("Failed to alloc ptnr buff\n");
+		aml_cam_log_err("Failed to alloc ptnr buff\n");
 		return -1;
 	}
 
@@ -377,7 +373,7 @@ static int isp_subdev_mcnr_buf_alloc(struct isp_dev_t *isp_dev, struct aml_forma
 
 	isp_dev->ops->hw_cfg_mcnr_mif_buf(isp_dev, fmt, &isp_dev->mcnr_buff);
 
-	pr_debug("mcnr alloc %x, %p, %x\n", paddr, isp_dev->mcnr_buff.vaddr[AML_PLANE_A], bsize);
+	aml_cam_log_dbg("mcnr alloc %x, %p, %x\n", paddr, isp_dev->mcnr_buff.vaddr[AML_PLANE_A], bsize);
 
 	return 0;
 }
@@ -398,7 +394,7 @@ static int isp_subdev_mcnr_buf_free(struct isp_dev_t *isp_dev)
 	isp_dev->mcnr_buff.addr[AML_PLANE_A] = 0x0000;
 	isp_dev->mcnr_buff.vaddr[AML_PLANE_A] = NULL;
 
-	pr_info("mcnr free\n");
+	aml_cam_log_info("mcnr free\n");
 
 	return 0;
 }
@@ -420,7 +416,7 @@ int isp_subdev_start_manual_dma(struct isp_dev_t *isp_dev)
 	isp_dev->ops->hw_check_done_apb_dma(isp_dev);
 	isp_dev->ops->hw_stop_apb_dma(isp_dev);
 
-	pr_info("manual dma count:%d-%d\n", isp_dev->fwreg_cnt, isp_dev->twreg_cnt);
+	aml_cam_log_info("manual dma count:%d-%d\n", isp_dev->fwreg_cnt, isp_dev->twreg_cnt);
 
 	return 0;
 }
@@ -437,7 +433,7 @@ int isp_subdev_start_auto_dma(struct isp_dev_t *isp_dev)
 	isp_dev->ops->hw_auto_trigger_apb_dma(isp_dev);
 	isp_dev->ops->hw_check_done_apb_dma(isp_dev);
 
-	pr_info("auto dma count:%d-%d\n", isp_dev->wreg_cnt, isp_dev->twreg_cnt);
+	aml_cam_log_info("auto dma count:%d-%d\n", isp_dev->wreg_cnt, isp_dev->twreg_cnt);
 
 	isp_dev->wreg_cnt = 0;
 	isp_dev->twreg_cnt = 0;
@@ -460,7 +456,7 @@ int isp_subdev_update_auto_dma(struct isp_dev_t *isp_dev)
 
 	isp_dev->ops->hw_start_apb_dma(isp_dev);
 
-	pr_debug("dma count:%d-%d\n", isp_dev->wreg_cnt, isp_dev->twreg_cnt);
+	aml_cam_log_dbg("dma count:%d-%d\n", isp_dev->wreg_cnt, isp_dev->twreg_cnt);
 
 	isp_dev->wreg_cnt = 0;
 	isp_dev->twreg_cnt = 0;
@@ -502,7 +498,7 @@ static int isp_subdev_set_format(void *priv, void *s_fmt, void *m_fmt)
 
 	rtn = isp_subdev_convert_fmt(isp_dev, format, &p_fmt);
 	if (rtn) {
-		pr_err("Error to convert format\n");
+		aml_cam_log_err("Error to convert format\n");
 		return rtn;
 	}
 
@@ -610,7 +606,7 @@ static void isp_subdev_log_status(void *priv)
 {
 	struct csiphy_dev_t *csiphy_dev = priv;
 
-	dev_info(csiphy_dev->dev, "Log status done\n");
+	aml_cam_log_info("Log status done\n");
 }
 
 static const struct aml_sub_ops isp_subdev_ops = {
@@ -630,7 +626,7 @@ static int isp_subdev_set_ctrl(struct v4l2_ctrl *ctrl)
 
 	switch (ctrl->id) {
 	case V4L2_CID_AML_MODE:
-		pr_info("isp_subdev_set_ctrl:%d\n", ctrl->val);
+		aml_cam_log_info("isp_subdev_set_ctrl:%d\n", ctrl->val);
 		isp_dev->enWDRMode = ctrl->val;
 		g_info->mode = AML_ISP_SCAM;
 		if (isp_dev->enWDRMode == ISP_SDR_DCAM_MODE ||
@@ -639,7 +635,7 @@ static int isp_subdev_set_ctrl(struct v4l2_ctrl *ctrl)
 			g_info->mode = AML_ISP_MCAM;
 		break;
 	default:
-		pr_err( "Error ctrl->id %u, flag 0x%lx\n", ctrl->id, ctrl->flags);
+		aml_cam_log_err( "Error ctrl->id %u, flag 0x%lx\n", ctrl->id, ctrl->flags);
 		break;
 	}
 
@@ -695,7 +691,7 @@ static irqreturn_t isp_subdev_irq_handler(int irq, void *dev)
 
 	if (isp_dev->isp_status == STATUS_STOP) {
 		if (aml_adap_global_get_vdev() == isp_dev->index) {
-			pr_err("ISP%d: Stoped and Irq ignore\n", isp_dev->index);
+			aml_cam_log_err("ISP%d: Stoped and Irq ignore\n", isp_dev->index);
 			aml_adap_global_done_completion();
 		}
 		debug_isp_irq_out_count++;
@@ -713,12 +709,10 @@ static irqreturn_t isp_subdev_irq_handler(int irq, void *dev)
 	if (status & 0x1) {
 		isp_dev->frm_cnt ++;
 		for (id = AML_ISP_STREAM_0; id < AML_ISP_STREAM_MAX; id++) {
-#ifdef DEBUG_TEST_MIPI_RESET
 			if (debug_test_mipi_reset) {
-				pr_err("debug_test_mipi_reset 1. no call to video irq handler\n");
+				aml_cam_log_err("debug_test_mipi_reset 1. no call to video irq handler\n");
 				continue;
 			}
-#endif
 
 			video = &isp_dev->video[id];
 			if (video->ops->cap_irq_handler)
@@ -734,7 +728,7 @@ static irqreturn_t isp_subdev_irq_handler(int irq, void *dev)
 #ifdef IRQ_TIME_DEBUG
 	end_time = ktime_get_real_ns();
 	diff = end_time - start_time;
-	pr_err("time consumed = %lld ns\n", diff);
+	aml_cam_log_err("time consumed = %lld ns\n", diff);
 #endif
 	return IRQ_HANDLED;
 }
@@ -766,19 +760,19 @@ static int isp_subdev_parse_dev(struct isp_dev_t *isp_dev)
 
 	isp_dev->irq = irq_of_parse_and_map(isp_dev->dev->of_node, 0);
 	if (!isp_dev->irq) {
-		dev_err(isp_dev->dev, "Error to parse irq\n");
+		aml_cam_log_err("Error to parse irq\n");
 		return rtn;
 	}
 
 	isp_dev->isp_clk = devm_clk_get(isp_dev->dev, "mipi_isp_clk");
 	if (IS_ERR(isp_dev->isp_clk)) {
-		dev_err(isp_dev->dev, "Error to get isp_clk\n");
+		aml_cam_log_err("Error to get isp_clk\n");
 		return PTR_ERR(isp_dev->isp_clk);
 	}
 
 	res = platform_get_resource(isp_dev->pdev, IORESOURCE_MEM, 0);
 	if (!res) {
-		dev_err(isp_dev->dev, "Error to get mem\n");
+		aml_cam_log_err("Error to get mem\n");
 		return rtn;
 	}
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0))
@@ -787,7 +781,7 @@ static int isp_subdev_parse_dev(struct isp_dev_t *isp_dev)
 	isp_dev->base = devm_ioremap_nocache(isp_dev->dev, res->start, resource_size(res));
 #endif
 	if (!isp_dev->base) {
-		dev_err(isp_dev->dev, "Error to ioremap mem\n");
+		aml_cam_log_err("Error to ioremap mem\n");
 		return rtn;
 	}
 
@@ -812,24 +806,24 @@ static int isp_subdev_power_on(struct isp_dev_t *isp_dev)
 			clk_set_rate(isp_dev->isp_clk, 666666666);
 		break;
 		default:
-			dev_err(isp_dev->dev, "ISP%d: Error to set clk rate\n", isp_dev->index);
+			aml_cam_log_err("ISP%d: Error to set clk rate\n", isp_dev->index);
 		break;
 		}
 		rtn = clk_prepare_enable(isp_dev->isp_clk);
 		if (rtn)
-			dev_err(isp_dev->dev, "Error to enable isp_clk\n");
+			aml_cam_log_err("Error to enable isp_clk\n");
 	}
 	return rtn;
 }
 
 static void isp_subdev_power_off(struct isp_dev_t *isp_dev)
 {
-	dev_info(isp_dev->dev, "%s in\n", __func__);
+	aml_cam_log_info("%s in\n", __func__);
 
 	pm_runtime_put_sync(isp_dev->dev);
 	pm_runtime_disable(isp_dev->dev);
 	dev_pm_domain_detach(isp_dev->dev, true);
-	dev_info(isp_dev->dev, "%s out \n", __func__);
+	aml_cam_log_info("%s out \n", __func__);
 }
 
 int isp_subdev_resume(struct isp_dev_t *isp_dev)
@@ -843,7 +837,7 @@ int isp_subdev_resume(struct isp_dev_t *isp_dev)
 	if (!__clk_is_enabled(isp_dev->isp_clk)) {
 		rtn = clk_prepare_enable(isp_dev->isp_clk);
 		if (rtn)
-			dev_err(isp_dev->dev, "Error to enable isp_clk\n");
+			aml_cam_log_err("Error to enable isp_clk\n");
 	}
 
 
@@ -853,7 +847,7 @@ int isp_subdev_resume(struct isp_dev_t *isp_dev)
 
 void isp_subdev_suspend(struct isp_dev_t *isp_dev)
 {
-	dev_info(isp_dev->dev, "%s in\n", __func__);
+	aml_cam_log_info("%s in\n", __func__);
 
 	if (__clk_is_enabled(isp_dev->isp_clk))
 		clk_disable_unprepare(isp_dev->isp_clk);
@@ -863,7 +857,7 @@ void isp_subdev_suspend(struct isp_dev_t *isp_dev)
 
 	dev_pm_domain_detach(isp_dev->dev, true);
 
-	dev_info(isp_dev->dev, "%s out\n", __func__);
+	aml_cam_log_info("%s out\n", __func__);
 }
 
 int aml_isp_subdev_init(void *c_dev)
@@ -880,14 +874,14 @@ int aml_isp_subdev_init(void *c_dev)
 
 	node = of_parse_phandle(cam_dev->dev->of_node, "isp", 0);
 	if (!node) {
-		pr_err("Failed to parse isp handle\n");
+		aml_cam_log_err("Failed to parse isp handle\n");
 		return rtn;
 	}
 
 	isp_dev->pdev = of_find_device_by_node(node);
 	if (!isp_dev->pdev) {
 		of_node_put(node);
-		pr_err("Failed to find isp platform device\n");
+		aml_cam_log_err("Failed to find isp platform device\n");
 		return rtn;
 	}
 	of_node_put(node);
@@ -911,7 +905,7 @@ int aml_isp_subdev_init(void *c_dev)
 
 	rtn = isp_subdev_parse_dev(isp_dev);
 	if (rtn) {
-		dev_err(isp_dev->dev, "Failed to parse dev\n");
+		aml_cam_log_err("Failed to parse dev\n");
 		return rtn;
 	}
 
@@ -919,7 +913,7 @@ int aml_isp_subdev_init(void *c_dev)
 			isp_subdev_irq_handler, IRQF_SHARED,
 			dev_driver_string(dev), isp_dev);
 	if (rtn) {
-		dev_err(isp_dev->dev, "Error to request irq: rtn %d\n", rtn);
+		aml_cam_log_err("Error to request irq: rtn %d\n", rtn);
 		devm_iounmap(dev, isp_dev->base);
 		return rtn;
 	}
@@ -933,7 +927,7 @@ int aml_isp_subdev_init(void *c_dev)
 
 	isp_global_init(isp_dev);
 
-	dev_info(isp_dev->dev, "ISP%u: subdev init\n", isp_dev->index);
+	aml_cam_log_info("ISP%u: subdev init\n", isp_dev->index);
 
 	g_isp_dev[cam_dev->index] = isp_dev;
 
@@ -961,7 +955,7 @@ void aml_isp_subdev_deinit(void *c_dev)
 
 	isp_global_deinit(isp_dev);
 
-	dev_info(isp_dev->dev, "ISP%u: subdev deinit\n", isp_dev->index);
+	aml_cam_log_info("ISP%u: subdev deinit\n", isp_dev->index);
 }
 
 static int isp_proc_show(struct seq_file *proc_entry, void *arg ) {
@@ -1077,7 +1071,7 @@ static int isp_proc_init(struct isp_dev_t *isp_dev)
 	sprintf(file_name, "%s%d", "isp", isp_dev->index);
 	subdev->proc_node_entry = proc_create_data(file_name, 0644, NULL, &isp_proc_file_ops, isp_dev);
 	if (subdev->proc_node_entry == NULL) {
-		dev_err(isp_dev->dev, "isp%u create proc failed!\n", isp_dev->index);
+		aml_cam_log_err("isp%u create proc failed!\n", isp_dev->index);
 		return rtn;
 	}
 
@@ -1136,7 +1130,7 @@ int aml_isp_subdev_register(struct isp_dev_t *isp_dev)
 	if (rtn)
 		goto error_rtn;
 
-	dev_info(isp_dev->dev, "ISP%u: register subdev\n", isp_dev->index);
+	aml_cam_log_info("ISP%u: register subdev\n", isp_dev->index);
 
 error_rtn:
 	return rtn;

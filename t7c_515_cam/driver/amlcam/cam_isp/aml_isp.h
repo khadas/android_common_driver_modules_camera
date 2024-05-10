@@ -27,6 +27,7 @@
 
 #include "aml_common.h"
 #include "aml_misc.h"
+#include "aml_debug.h"
 
 enum {
 	AML_ISP_PAD_SINK_VIDEO,

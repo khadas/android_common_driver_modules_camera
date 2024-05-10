@@ -538,7 +538,7 @@ void isp_disp_set_crop_size(struct isp_dev_t *isp_dev, u32 idx, struct aml_crop 
 	u32 addr = 0;
 
 	if (idx >= DISP_CNT) {
-		pr_err("Error input disp index\n");
+		aml_cam_log_err("Error input disp index\n");
 		return;
 	}
 
@@ -576,7 +576,7 @@ void isp_disp_set_scaler_out_size(struct isp_dev_t *isp_dev, u32 idx, struct aml
 	u32 addr = 0;
 
 	if (idx >= DISP_CNT) {
-		pr_err("Error input disp index\n");
+		aml_cam_log_err("Error input disp index\n");
 		return;
 	}
 
@@ -602,7 +602,7 @@ void isp_disp_set_csc2_fmt(struct isp_dev_t *isp_dev, u32 idx, struct aml_format
 
 	if (!(fmt->code == V4L2_PIX_FMT_RGB24 ||
 		fmt->code == V4L2_PIX_FMT_BGR24)) {
-		pr_debug("Error to support disp%u csc2\n", idx);
+		aml_cam_log_dbg("Error to support disp%u csc2\n", idx);
 		return;
 	}
 
@@ -637,7 +637,7 @@ void isp_disp_set_csc2_fmt(struct isp_dev_t *isp_dev, u32 idx, struct aml_format
 	isp_reg_update_bits(isp_dev, ISP_DISP0_TOP_TOP_REG + ((idx * 0x100) << 2), 0, 6, 3);
 	isp_reg_update_bits(isp_dev, DISP0_TOP_TOP_CTRL + ((idx * 0x100) << 2), 1, 1, 1);
 
-	pr_info("rgb fmt need to set csc2\n");
+	aml_cam_log_info("rgb fmt need to set csc2\n");
 }
 
 void isp_disp_get_scaler_out_size(struct isp_dev_t *isp_dev, u32 idx, struct aml_format *fmt)
@@ -705,7 +705,7 @@ void isp_disp_set_input_size(struct isp_dev_t *isp_dev, u32 idx, struct aml_form
 	u32 addr = 0;
 
 	if (idx >= DISP_CNT) {
-		pr_err("Error input disp index\n");
+		aml_cam_log_err("Error input disp index\n");
 		return;
 	}
 
@@ -757,11 +757,11 @@ void isp_disp_pps_config(struct isp_dev_t *isp_dev, u32 idx,
 
 	pps_en = hsc_en | vsc_en | preh_en | prev_en;
 	if (!pps_en) {
-		pr_info("ISP%u: No need to enable idx %u pps\n", isp_dev->index, idx);
+		aml_cam_log_info("ISP%u: No need to enable idx %u pps\n", isp_dev->index, idx);
 		return;
 	}
 
-	pr_info("ISP%u: pps%u: ih-iv: %u-%u, oh-ov: %u-%u\n",
+	aml_cam_log_info("ISP%u: pps%u: ih-iv: %u-%u, oh-ov: %u-%u\n",
 			isp_dev->index, idx, ihsize, ivsize, ohsize, ovsize);
 
 	addr = DISP0_PPS_SCALE_EN + ((idx * 0x100) << 2);
@@ -1319,7 +1319,7 @@ void isp_disp_calc_slice(struct isp_dev_t *isp_dev, u32 idx, struct aml_slice *p
 	param->right_hsc_ini_phs0[0] = right_hsc_ini_phs0[0];
 	param->right_hsc_ini_phs0[1] = right_hsc_ini_phs0[1];
 
-	pr_info("ISP%u: left_hsize-left_ovlp: %lld-%lld, right_hsize-right_ovlp: %lld-%lld\n",
+	aml_cam_log_info("ISP%u: left_hsize-left_ovlp: %lld-%lld, right_hsize-right_ovlp: %lld-%lld\n",
 			idx, left_hsize, left_overlap, right_hsize, right_overlap);
 }
 

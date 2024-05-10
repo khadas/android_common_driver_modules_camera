@@ -16,11 +16,6 @@
 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 *
 */
-#ifdef pr_fmt
-#undef pr_fmt
-#endif
-#define pr_fmt(fmt)  "[ispvideo]:%s:%d: " fmt, __func__, __LINE__
-
 #include <linux/version.h>
 #include <media/v4l2-subdev.h>
 #include <media/v4l2-ioctl.h>
@@ -94,14 +89,14 @@ static long video_get_dma_buff(struct vb2_buffer *vb)
 	fd = vb->planes[AML_PLANE_A].m.fd;
 	dbuf = dma_buf_get(fd);
 	if (IS_ERR(dbuf)) {
-		pr_err("Error to get dbuf: fd %d\n", fd);
+		aml_cam_log_err("Error to get dbuf: fd %d\n", fd);
 		return PTR_ERR(dbuf);
 	}
 
 	attach = dma_buf_attach(dbuf, video->dev);
 	if (IS_ERR(attach)) {
 		dma_buf_put(dbuf);
-		pr_err("Error to attach dbuf\n");
+		aml_cam_log_err("Error to attach dbuf\n");
 		return PTR_ERR(attach);
 	}
 
@@ -109,7 +104,7 @@ static long video_get_dma_buff(struct vb2_buffer *vb)
 	if (IS_ERR(sgt)) {
 		dma_buf_detach(dbuf, attach);
 		dma_buf_put(dbuf);
-		pr_err("Error to map attach dbuf\n");
+		aml_cam_log_err("Error to map attach dbuf\n");
 		return PTR_ERR(sgt);
 	}
 
@@ -179,7 +174,7 @@ static int video_enum_fmt(struct file *file, void *fh, struct v4l2_fmtdesc *fmt)
 
 	fmt->pixelformat = video->format[fmt->index].fourcc;
 
-	//dev_info(video->dev, "video id %d enum fmt index %d, out fmt 0x%x\n", video->id, fmt->index, fmt->pixelformat);
+	//aml_cam_log_info("video id %d enum fmt index %d, out fmt 0x%x\n", video->id, fmt->index, fmt->pixelformat);
 
 	return 0;
 }
@@ -219,7 +214,7 @@ static int video_set_fmt(struct file *file, void *fh, struct v4l2_format *fmt)
 	// phase 2. use detailed format info in video->afmt.
 	fmt->fmt.pix.bytesperline = video->afmt.stride;
 	video->f_current = *fmt;
-	//pr_info("bytesperline  %d\n", fmt->fmt.pix.bytesperline);
+	//aml_cam_log_info("bytesperline  %d\n", fmt->fmt.pix.bytesperline);
 
 	return 0;
 }
@@ -281,18 +276,18 @@ static int video_ioctl_qbuf(struct file *file, void *priv, struct v4l2_buffer *p
 	case V4L2_MEMORY_DMABUF:
 		rtn = video_get_dma_buff(vb);
 		if (rtn) {
-			pr_err("Failed to get dma buf: %d\n", rtn);
+			aml_cam_log_err("Failed to get dma buf: %d\n", rtn);
 			return rtn;
 		}
 	break;
 	default:
-		pr_err("Error  memory type: %d\n", vb->memory);
+		aml_cam_log_err("Error  memory type: %d\n", vb->memory);
 		return rtn;
 	}
 
 	rtn = vb2_ioctl_qbuf(file, priv, p);
 	if (rtn)
-		pr_err("Failed to dqubuf: %d\n", rtn);
+		aml_cam_log_err("Failed to dqubuf: %d\n", rtn);
 
 	return rtn;
 }
@@ -305,17 +300,17 @@ static int video_ioctl_dqbuf(struct file *file, void *priv, struct v4l2_buffer *
 	struct aml_video *aml_video = video_drvdata(file);
 
 	if (0 == aml_video->first_frame_logged) {
-		pr_info("video %d beg dq first 1 frame\n", aml_video->id);
+		aml_cam_log_info("video %d beg dq first 1 frame\n", aml_video->id);
 	}
 
 	rtn = vb2_ioctl_dqbuf(file, priv, p);
 	if (rtn) {
-		pr_err("Failed to dqubuf: %d\n", rtn);
+		aml_cam_log_err("Failed to dqubuf: %d\n", rtn);
 		return rtn;
 	}
 
 	if (0 == aml_video->first_frame_logged) {
-		pr_info("video %d end dq first 1 frame\n", aml_video->id);
+		aml_cam_log_info("video %d end dq first 1 frame\n", aml_video->id);
 		aml_video->first_frame_logged = 1;
 	}
 
@@ -330,7 +325,7 @@ static int video_ioctl_dqbuf(struct file *file, void *priv, struct v4l2_buffer *
 	break;
 	default:
 		rtn = -EINVAL;
-		pr_err("Error  memory type: %d\n", vb->memory);
+		aml_cam_log_err("Error  memory type: %d\n", vb->memory);
 	break;
 	}
 
@@ -402,8 +397,7 @@ static int video_buff_prepare(struct vb2_buffer *vb)
 	u32 size = video->f_current.fmt.pix.sizeimage;
 
 	if (vb2_plane_size(vb, 0) < size) {
-		dev_err(video->dev,
-			"Error user buffer too small (%ld < %u)\n",
+		aml_cam_log_err("Error user buffer too small (%ld < %u)\n",
 			vb2_plane_size(vb, 0), size);
 		return -EINVAL;
 	}
@@ -458,7 +452,7 @@ static int video_get_sensor_fps(struct media_entity *entity, struct aml_video *v
 
 	ctrl = v4l2_ctrl_find(subdev->ctrl_handler, V4L2_CID_AML_ORIG_FPS);
 	if (!ctrl) {
-		pr_debug("Failed to get fps ctrl,set default 30\n");
+		aml_cam_log_dbg("Failed to get fps ctrl,set default 30\n");
 		video->actrl.fps_sensor = 30;
 		video->actrl.fps_output = 30;
 		return -EINVAL;
@@ -492,7 +486,7 @@ static int video_start_streaming(struct vb2_queue *queue, unsigned int count)
 
 	rtn = media_pipeline_start(entity, video->pipe);
 	if (rtn) {
-		dev_err(video->dev, "Failed to start pipeline: %d\n", rtn);
+		aml_cam_log_err("Failed to start pipeline: %d\n", rtn);
 		goto error_return;
 	}
 
@@ -517,7 +511,7 @@ static int video_start_streaming(struct vb2_queue *queue, unsigned int count)
 		} else if (entity->stream_count > 1) {
 			// for existed stream; sleep 1 vsync;
 			// let settings take effect; then stream on isp;
-			pr_info("sleep 100 for existed stream;");
+			aml_cam_log_info("sleep 100 for existed stream;");
 			msleep(100);
 		}
 	}
@@ -551,17 +545,17 @@ static int video_start_streaming(struct vb2_queue *queue, unsigned int count)
 		if (rtn < 0 && rtn != -ENOIOCTLCMD) {
 			entity = &video->vdev.entity;
 			media_pipeline_stop(entity);
-			pr_err("subdev stream on fail, ret %d", rtn);
+			aml_cam_log_err("subdev stream on fail, ret %d", rtn);
 			goto error_return;
 		}
 	}
 
 	video->first_frame_logged = 0;
 
-	pr_info("stream on vid %d, pipeline streaming_count %d ", video->id, video->pipe->streaming_count);
+	aml_cam_log_info("stream on vid %d, pipeline streaming_count %d ", video->id, video->pipe->streaming_count);
 
 	if (video->pipe->streaming_count == 1) {
-		pr_info("start dq check timer on vid %d", video->id);
+		aml_cam_log_info("start dq check timer on vid %d", video->id);
 		mod_timer(&cam_dev->dq_check_timer, jiffies + msecs_to_jiffies(500));
 		video->dq_check_timer_working = 1;
 	}
@@ -707,13 +701,13 @@ int aml_video_register(struct aml_video *video)
 	vb2_q->min_buffers_needed = video->min_buffer_count;
 	rtn = vb2_queue_init(vb2_q);
 	if (rtn < 0) {
-		dev_err(video->dev, "Failed to init vb2 queue: %d\n", rtn);
+		aml_cam_log_err("Failed to init vb2 queue: %d\n", rtn);
 		goto error_vb2_init;
 	}
 
 	rtn = media_entity_pads_init(&vdev->entity, 1, pad);
 	if (rtn < 0) {
-		dev_err(video->dev, "Failed to init entity pads: %d\n", rtn);
+		aml_cam_log_err("Failed to init entity pads: %d\n", rtn);
 		goto error_media_init;
 	}
 
@@ -738,7 +732,7 @@ int aml_video_register(struct aml_video *video)
 	rtn = video_register_device(vdev, VFL_TYPE_GRABBER, VIDEO_NODE);
 #endif
 	if (rtn < 0) {
-		dev_err(video->dev, "Failed to register video device: %d\n", rtn);
+		aml_cam_log_err("Failed to register video device: %d\n", rtn);
 		goto error_video_register;
 	}
 

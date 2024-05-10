@@ -32,7 +32,7 @@ void isp_apb_dma_check_done(struct isp_dev_t *isp_dev)
 
 		udelay(300);
 		if (failed ++ > 1000) {
-			pr_err("isp apb dma timeout\n");
+			aml_cam_log_err("isp apb dma timeout\n");
 			break;
 		}
 	}

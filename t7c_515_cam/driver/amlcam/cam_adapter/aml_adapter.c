@@ -16,11 +16,6 @@
 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 *
 */
-#ifdef pr_fmt
-#undef pr_fmt
-#endif
-#define pr_fmt(fmt)  "aml-adap:%s:%d: " fmt, __func__, __LINE__
-
 #include <linux/version.h>
 #include <linux/clk.h>
 #include <linux/io.h>
@@ -77,7 +72,7 @@ int write_data_to_buf(char *buf, int size)
 	num ++;
 
 	if (buf == NULL || size == 0) {
-		pr_info("%s:Error input param\n", __func__);
+		aml_cam_log_err("%s:Error input param\n", __func__);
 		return -1;
 	}
 
@@ -87,7 +82,7 @@ int write_data_to_buf(char *buf, int size)
 	set_fs(KERNEL_DS);
 	fp = filp_open(path, O_RDWR|O_CREAT, 0);
 	if (IS_ERR(fp)) {
-		pr_info("read error.\n");
+		aml_cam_log_err("read error.\n");
 		return -1;
 	}
 
@@ -104,7 +99,7 @@ int write_data_to_buf(char *buf, int size)
 struct adapter_dev_t *adap_get_dev(int index)
 {
 	if (index >= 4) {
-		pr_err("err adap index num\n");
+		aml_cam_log_err("err adap index num\n");
 	}
 
 	return g_adap_dev[index];
@@ -120,7 +115,7 @@ static void __iomem *adap_ioremap_resource(void *a_dev, char *name)
 	struct platform_device *pdev;
 
 	if (!a_dev || !name) {
-		pr_err("Error input param\n");
+		aml_cam_log_err("Error input param\n");
 		return NULL;
 	}
 
@@ -130,7 +125,7 @@ static void __iomem *adap_ioremap_resource(void *a_dev, char *name)
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, name);
 	if (!res) {
-		dev_err(dev, "Error %s res\n", name);
+		aml_cam_log_err("Error %s res\n", name);
 		return NULL;
 	}
 
@@ -141,7 +136,7 @@ static void __iomem *adap_ioremap_resource(void *a_dev, char *name)
 	reg = devm_ioremap_nocache(dev, res->start, size);
 #endif
 	if (!reg) {
-		dev_err(dev, "Failed to ioremap %s %pR\n", name, res);
+		aml_cam_log_err("Failed to ioremap %s %pR\n", name, res);
 		reg = IOMEM_ERR_PTR(-ENOMEM);
 	}
 
@@ -178,7 +173,7 @@ static int adap_of_parse_version(struct adapter_dev_t *adap_dev)
 	break;
 	default:
 		rtn = -EINVAL;
-		dev_err(dev, "Error invalid version num: %u\n", adap_dev->version);
+		aml_cam_log_err("Error invalid version num: %u\n", adap_dev->version);
 	break;
 	}
 
@@ -202,7 +197,7 @@ static int adap_alloc_raw_buffs(struct adapter_dev_t *a_dev)
 		(param->mode == MODE_MIPI_RAW_HDR_DDR_DIRCT) ||
 		(param->mode == MODE_MIPI_YUV_SDR_DDR) ||
 		(param->mode == MODE_MIPI_RAW_HDR_DDR_DDR))
-		pr_info("ddr mode, alloc buffer.\n");
+		aml_cam_log_info("ddr mode, alloc buffer.\n");
 	else
 		return rtn;
 
@@ -235,7 +230,7 @@ static int adap_alloc_raw_buffs(struct adapter_dev_t *a_dev)
 
 	rtn = aml_subdev_cma_alloc(a_dev->pdev, &paddr, virtaddr, bsize);
 	if (rtn != 0) {
-		pr_err("Failed to alloc raw buff\n");
+		aml_cam_log_err("Failed to alloc raw buff\n");
 		return -1;
 	}
 
@@ -292,7 +287,7 @@ static void adap_free_raw_buffs(struct adapter_dev_t *a_dev)
 		(param->mode == MODE_MIPI_RAW_HDR_DDR_DIRCT) ||
 		(param->mode == MODE_MIPI_YUV_SDR_DDR) ||
 		(param->mode == MODE_MIPI_RAW_HDR_DDR_DDR))
-		pr_info("ddr mode, free buffer\n");
+		aml_cam_log_info("ddr mode, free buffer\n");
 	else
 		return;
 
@@ -362,7 +357,7 @@ int adap_fe_cfg_buf(struct adapter_dev_t *a_dev)
 
 		spin_unlock_irqrestore(&param->ddr_lock, flags);
 
-		pr_err("ADAP%d:Error free list empty\n", a_dev->index);
+		aml_cam_log_err("ADAP%d:Error free list empty\n", a_dev->index);
 
 		return -1;
 	}
@@ -396,7 +391,7 @@ int adap_fe_done_buf(struct adapter_dev_t *a_dev)
 	if (param->cur_buf == NULL) {
 		spin_unlock_irqrestore(&g_info->list_lock, flags);
 
-		pr_debug("Error current buffer is NULL\n");
+		aml_cam_log_dbg("Error current buffer is NULL\n");
 
 		return -1;
 	}
@@ -416,7 +411,7 @@ static int adap_of_parse_dev(struct adapter_dev_t *adap_dev)
 
 	adap_dev->adap = adap_ioremap_resource(adap_dev, "adapter");
 	if (!adap_dev->adap) {
-		dev_err(adap_dev->dev, "Failed to get adapter reg\n");
+		aml_cam_log_err("Failed to get adapter reg\n");
 		rtn = -EINVAL;
 		goto error_rtn;
 	}
@@ -471,7 +466,7 @@ static int adap_request_irq(struct adapter_dev_t *adap_dev)
 
 	adap_dev->irq = irq_of_parse_and_map(adap_dev->dev->of_node, 0);
 	if (!adap_dev->irq) {
-		dev_err(adap_dev->dev, "Error to parse irq\n");
+		aml_cam_log_err("Error to parse irq\n");
 		return -EINVAL;
 	}
 
@@ -479,7 +474,7 @@ static int adap_request_irq(struct adapter_dev_t *adap_dev)
 				adap_irq_handler, IRQF_SHARED,
 				dev_driver_string(adap_dev->dev), adap_dev);
 	if (rtn) {
-		dev_err(adap_dev->dev, "Error to request irq: rtn %d\n", rtn);
+		aml_cam_log_err("Error to request irq: rtn %d\n", rtn);
 		return rtn;
 	}
 
@@ -539,7 +534,7 @@ static int adap_request_irq_offline(struct adapter_dev_t *adap_dev)
 
 	adap_dev->irq = irq_of_parse_and_map(adap_dev->dev->of_node, adap_dev->index);
 	if (!adap_dev->irq) {
-		dev_err(adap_dev->dev, "Error to parse irq\n");
+		aml_cam_log_err("Error to parse irq\n");
 		return -EINVAL;
 	}
 
@@ -547,7 +542,7 @@ static int adap_request_irq_offline(struct adapter_dev_t *adap_dev)
 				adap_irq_handler_offline, IRQF_SHARED,
 				dev_driver_string(adap_dev->dev), adap_dev);
 	if (rtn) {
-		dev_err(adap_dev->dev, "Error to request irq: rtn %d\n", rtn);
+		aml_cam_log_err("Error to request irq: rtn %d\n", rtn);
 		return rtn;
 	}
 
@@ -629,7 +624,7 @@ static int adap_subdev_convert_fmt(struct adapter_dev_t *adap_dev,
 		fmt = ADAP_RAW14;
 	break;
 	default:
-		dev_err(adap_dev->dev, "Error support format\n");
+		aml_cam_log_err("Error support format\n");
 	break;
 	}
 
@@ -648,7 +643,7 @@ static int adap_subdev_hw_init(struct adapter_dev_t *adap_dev,
 
 	rtn = adap_subdev_convert_fmt(adap_dev, format);
 	if (rtn < 0) {
-		dev_err(adap_dev->dev, "Error to convert fmt\n");
+		aml_cam_log_err("Error to convert fmt\n");
 		return rtn;
 	}
 	param->format = rtn;
@@ -669,17 +664,17 @@ static int adap_subdev_hw_init(struct adapter_dev_t *adap_dev,
 		param->mode = MODE_MIPI_RAW_SDR_DDR;
 		param->dol_type = ADAP_DOL_NONE;
 		aml_adap_global_mode(MODE_MIPI_RAW_SDR_DDR);
-		pr_err("sdr dcam mode\n");
+		aml_cam_log_err("sdr dcam mode\n");
 	} else if (adap_dev->enWDRMode == ISP_WDR_DCAM_LMODE) {
 		param->mode = MODE_MIPI_RAW_HDR_DDR_DDR;
 		param->dol_type = ADAP_DOL_LINEINFO;
 		aml_adap_global_mode(MODE_MIPI_RAW_HDR_DDR_DDR);
-		pr_err("wdr dcam lmode\n");
+		aml_cam_log_err("wdr dcam lmode\n");
 	} else if (adap_dev->enWDRMode == ISP_WDR_DCAM_FMODE) {
 		param->mode = MODE_MIPI_RAW_HDR_DDR_DDR;
 		param->dol_type = ADAP_DOL_VC;
 		aml_adap_global_mode(MODE_MIPI_RAW_HDR_DDR_DDR);
-		pr_err("wdr dcam fmode\n");
+		aml_cam_log_err("wdr dcam fmode\n");
 	} else {
 		param->mode = MODE_MIPI_RAW_SDR_DIRCT;
 		if (param->format == ADAP_YUV422_8BIT)
@@ -702,7 +697,7 @@ static int adap_subdev_set_format(void *priv, void *s_fmt, void *m_fmt)
 	struct v4l2_subdev_format *fmt = s_fmt;
 	struct v4l2_mbus_framefmt *format = m_fmt;
 
-	pr_info("set fmt pad =  0x%x\n", fmt->pad);
+	aml_cam_log_info("set fmt pad =  0x%x\n", fmt->pad);
 
 	if (fmt->pad == AML_ADAP_PAD_SINK)
 		rtn = adap_subdev_hw_init(adap_dev, format);
@@ -710,7 +705,7 @@ static int adap_subdev_set_format(void *priv, void *s_fmt, void *m_fmt)
 	if (fmt->pad == AML_ADAP_PAD_SRC) {
 
 		if (adap_dev->pfmt[AML_ADAP_PAD_SINK].width == 0 || adap_dev->pfmt[AML_ADAP_PAD_SINK].height == 0) {
-			dev_err(adap_dev->dev, "must set adap sink pad [0] first.\n");
+			aml_cam_log_err("must set adap sink pad [0] first.\n");
 			return -1;
 		}
 
@@ -756,7 +751,7 @@ static int adap_subdev_set_format(void *priv, void *s_fmt, void *m_fmt)
 				case MEDIA_BUS_FMT_VYUY8_2X8: byte_order = 0b11100100; break;
 			}
 
-			dev_info(adap_dev->dev, "set byte order 0x%x\n", byte_order);
+			aml_cam_log_info("set byte order 0x%x\n", byte_order);
 
 			if (adap_dev->ops->hw_fe_set_byte_order)
 				adap_dev->ops->hw_fe_set_byte_order(adap_dev, byte_order);
@@ -771,7 +766,7 @@ static void adap_subdev_log_status(void *priv)
 {
 	struct csiphy_dev_t *adap_dev = priv;
 
-	dev_info(adap_dev->dev, "Log status done\n");
+	aml_cam_log_info("Log status done\n");
 }
 
 static const struct aml_sub_ops adap_subdev_ops = {
@@ -789,14 +784,14 @@ static int adap_subdev_set_ctrl(struct v4l2_ctrl *ctrl)
 
 	switch (ctrl->id) {
 	case V4L2_CID_AML_MODE:
-		pr_info("adap_subdev_set_ctrl:%d\n", ctrl->val);
+		aml_cam_log_info("adap_subdev_set_ctrl:%d\n", ctrl->val);
 		adap_dev->enWDRMode = ctrl->val;
 		break;
 	case V4L2_CID_AML_ADAP_OFFSET:
 		memcpy(&adap_dev->param.offset, ctrl->p_new.p_u32, sizeof(struct adap_exp_offset));
 		break;
 	default:
-		pr_err( "Error ctrl->id %u, flag 0x%lx\n", ctrl->id, ctrl->flags);
+		aml_cam_log_err( "Error ctrl->id %u, flag 0x%lx\n", ctrl->id, ctrl->flags);
 		break;
 	}
 
@@ -852,19 +847,19 @@ static int adap_subdev_ctrls_init(struct adapter_dev_t *adap_dev)
 static int adap_subdev_power_on(struct adapter_dev_t *adap_dev)
 {
 	int rtn = 0;
-	dev_info(adap_dev->dev, "%s in\n", __func__);
+	aml_cam_log_info("%s in\n", __func__);
 
 #ifndef T7C_CHIP
 	rtn = clk_prepare_enable(adap_dev->vapb_clk);
 	if (rtn)
-		pr_err("Error to enable vapb clk\n");
+		aml_cam_log_err("Error to enable vapb clk\n");
 #endif
 	if (!__clk_is_enabled(adap_dev->adap_clk)) {
 
 		clk_set_rate(adap_dev->adap_clk, 666666666);
 		rtn = clk_prepare_enable(adap_dev->adap_clk);
 		if (rtn)
-			dev_err(adap_dev->dev, "Error to enable adap_clk(isp) clk\n");
+			aml_cam_log_err("Error to enable adap_clk(isp) clk\n");
 
 	}
 	return rtn;
@@ -872,7 +867,7 @@ static int adap_subdev_power_on(struct adapter_dev_t *adap_dev)
 
 static void adap_subdev_power_off(struct adapter_dev_t *adap_dev)
 {
-	dev_info(adap_dev->dev, "%s in\n", __func__);
+	aml_cam_log_info("%s in\n", __func__);
 
 	if (adap_dev->index == AML_CAM_4) {
 		clk_disable_unprepare(adap_dev->wrmif_clk);
@@ -881,10 +876,10 @@ static void adap_subdev_power_off(struct adapter_dev_t *adap_dev)
 
 void adap_subdev_suspend(struct adapter_dev_t *adap_dev)
 {
-	dev_info(adap_dev->dev, "%s in\n", __func__);
+	aml_cam_log_info("%s in\n", __func__);
 	if (__clk_is_enabled(adap_dev->adap_clk))
 		clk_disable_unprepare(adap_dev->adap_clk);
-	dev_info(adap_dev->dev, "%s out \n", __func__);
+	aml_cam_log_info("%s out \n", __func__);
 }
 
 int adap_subdev_resume(struct adapter_dev_t *adap_dev)
@@ -894,7 +889,7 @@ int adap_subdev_resume(struct adapter_dev_t *adap_dev)
 	if (!__clk_is_enabled(adap_dev->adap_clk)) {
 		rtn = clk_prepare_enable(adap_dev->adap_clk);
 		if (rtn)
-			dev_err(adap_dev->dev, "Error to enable adap_clk(isp) clk\n");
+			aml_cam_log_err("Error to enable adap_clk(isp) clk\n");
 	}
 	return rtn;
 }
@@ -971,7 +966,7 @@ static int adap_proc_init(struct adapter_dev_t *adap_dev)
 	sprintf(file_name, "%s%d", "adapter", adap_dev->index);
 	subdev->proc_node_entry = proc_create_data(file_name, 0644, NULL, &adapter_proc_file_ops, adap_dev);
 	if (subdev->proc_node_entry == NULL) {
-		dev_err(adap_dev->dev, "adapter%u create proc failed!\n", adap_dev->index);
+		aml_cam_log_err("adapter%u create proc failed!\n", adap_dev->index);
 		return rtn;
 	}
 
@@ -1024,7 +1019,7 @@ int aml_adap_subdev_register(struct adapter_dev_t *adap_dev)
 	if (adap_dev->ops->hw_reset)
 		adap_dev->ops->hw_reset(adap_dev);
 
-	dev_info(adap_dev->dev, "ADAP%u: register subdev\n", adap_dev->index);
+	aml_cam_log_info("ADAP%u: register subdev\n", adap_dev->index);
 
 error_rtn:
 	return rtn;
@@ -1048,14 +1043,14 @@ int aml_adap_subdev_init(void *c_dev)
 
 	node = of_parse_phandle(cam_dev->dev->of_node, "adapter", 0);
 	if (!node) {
-		pr_err("Failed to parse adapter handle\n");
+		aml_cam_log_err("Failed to parse adapter handle\n");
 		return rtn;
 	}
 
 	adap_dev->pdev = of_find_device_by_node(node);
 	if (!adap_dev->pdev) {
 		of_node_put(node);
-		pr_err("Failed to find adapter platform device");
+		aml_cam_log_err("Failed to find adapter platform device");
 		return rtn;
 	}
 	of_node_put(node);
@@ -1076,19 +1071,19 @@ int aml_adap_subdev_init(void *c_dev)
 
 	rtn = adap_of_parse_version(adap_dev);
 	if (rtn) {
-		dev_err(adap_dev->dev, "Failed to parse version\n");
+		aml_cam_log_err("Failed to parse version\n");
 		return rtn;
 	}
 
 	rtn = adap_of_parse_dev(adap_dev);
 	if (rtn) {
-		dev_err(adap_dev->dev, "Failed to parse dev\n");
+		aml_cam_log_err("Failed to parse dev\n");
 		return rtn;
 	}
 
 	rtn = adap_subdev_power_on(adap_dev);
 	if (rtn) {
-		dev_err(adap_dev->dev, "Failed to power on\n");
+		aml_cam_log_err("Failed to power on\n");
 		return rtn;
 	}
 
@@ -1098,7 +1093,7 @@ int aml_adap_subdev_init(void *c_dev)
 	if (rtn)
 		adap_iounmap_resource(adap_dev);
 
-	dev_info(adap_dev->dev, "ADAP%u: subdev init\n", adap_dev->index);
+	aml_cam_log_info("ADAP%u: subdev init\n", adap_dev->index);
 
 	g_adap_dev[cam_dev->index] = adap_dev;
 
@@ -1123,5 +1118,5 @@ void aml_adap_subdev_deinit(void *c_dev)
 	if (adap_dev->index == AML_CAM_4)
 		devm_clk_put(adap_dev->dev, adap_dev->wrmif_clk);
 
-	dev_info(adap_dev->dev, "ADAP%u: subdev deinit\n", adap_dev->index);
+	aml_cam_log_info("ADAP%u: subdev deinit\n", adap_dev->index);
 }

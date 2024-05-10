@@ -16,10 +16,6 @@
 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 *
 */
-#ifdef pr_fmt
-#undef pr_fmt
-#endif
-#define pr_fmt(fmt)  "aml-csiphy:%s:%d: " fmt, __func__, __LINE__
 #include <linux/version.h>
 #include <linux/io.h>
 #include <linux/clk.h>
@@ -75,7 +71,7 @@ static int csiphy_of_parse_endpoint_node(struct device_node *node,
 
 	rtn = v4l2_fwnode_endpoint_parse(of_fwnode_handle(node), &vep);
 	if (rtn) {
-		pr_err("Failed to parse csiphy endpoint\n");
+		aml_cam_log_err("Failed to parse csiphy endpoint\n");
 		return rtn;
 	}
 
@@ -105,14 +101,14 @@ static int csiphy_of_parse_ports(struct csiphy_dev_t *csiphy_dev)
 
 		remote = of_graph_get_remote_port_parent(node);
 		if (!remote) {
-			dev_err(dev, "Cannot get remote parent\n");
+			aml_cam_log_err("Cannot get remote parent\n");
 			of_node_put(node);
 			return -EINVAL;
 		}
 #ifdef SENSOR_SEARCH
 		sensor_dev = of_fwnode_handle(remote)->dev;
 		if ( sensor_dev->driver && strstr(node->name, sensor_dev->driver->name) ) {
-			dev_err(dev, "subdev driver name %s \n", sensor_dev->driver->name);
+			aml_cam_log_err("subdev driver name %s \n", sensor_dev->driver->name);
 		} else
 			continue;
 #endif
@@ -126,7 +122,7 @@ static int csiphy_of_parse_ports(struct csiphy_dev_t *csiphy_dev)
 				sizeof(*c_asd));
 #endif
 		if (IS_ERR(asd)) {
-			dev_err(dev, "Failed to add subdev\n");
+			aml_cam_log_err("Failed to add subdev\n");
 			of_node_put(node);
 			return -EINVAL;
 		}
@@ -170,7 +166,7 @@ static void __iomem *csiphy_ioremap_resource(void *c_dev, char *name)
 	struct platform_device *pdev;
 
 	if (!c_dev || !name) {
-		pr_err("Error input param\n");
+		aml_cam_log_err("Error input param\n");
 		return NULL;
 	}
 
@@ -180,7 +176,7 @@ static void __iomem *csiphy_ioremap_resource(void *c_dev, char *name)
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, name);
 	if (!res) {
-		dev_err(dev, "Error %s res\n", name);
+		aml_cam_log_err("Error %s res\n", name);
 		return NULL;
 	}
 
@@ -191,7 +187,7 @@ static void __iomem *csiphy_ioremap_resource(void *c_dev, char *name)
 	reg = devm_ioremap_nocache(dev, res->start, size);
 #endif
 	if (!reg) {
-		dev_err(dev, "Failed to ioremap %s %pR\n", name, res);
+		aml_cam_log_err("Failed to ioremap %s %pR\n", name, res);
 		reg = IOMEM_ERR_PTR(-ENOMEM);
 	}
 
@@ -232,7 +228,7 @@ static int csiphy_of_parse_version(struct csiphy_dev_t *csiphy_dev)
 	break;
 	default:
 		rtn = -EINVAL;
-		dev_err(dev, "Error invalid version num: %u\n", *version);
+		aml_cam_log_err("Error invalid version num: %u\n", *version);
 	break;
 	}
 
@@ -258,13 +254,13 @@ static int csiphy_of_parse_dev(struct csiphy_dev_t *csiphy_dev)
 	//csiphy_dev->csiphy_clk = devm_clk_get(csiphy_dev->dev, "cts_mipi_csi_phy_clk");
 	csiphy_dev->csiphy_clk = devm_clk_get(csiphy_dev->dev, "mipi_phy_clk");
 	if (IS_ERR(csiphy_dev->csiphy_clk)) {
-		dev_err(csiphy_dev->dev, "Error to get csiphy_clk\n");
+		aml_cam_log_err("Error to get csiphy_clk\n");
 		return PTR_ERR(csiphy_dev->csiphy_clk);
 	}
 
 	csiphy_dev->csiphy_clk1 = devm_clk_get(csiphy_dev->dev, "mipi_phy_clk1");
 	if (IS_ERR(csiphy_dev->csiphy_clk1)) {
-		dev_err(csiphy_dev->dev, "Error to get csiphy_clk1\n");
+		aml_cam_log_err("Error to get csiphy_clk1\n");
 		return PTR_ERR(csiphy_dev->csiphy_clk1);
 	}
 
@@ -344,7 +340,7 @@ static int csiphy_subdev_get_link_freq(struct media_entity *entity, s64 *link_fr
 
 	sensor = csiphy_subdev_get_sensor_entity(entity);
 	if (!sensor) {
-		pr_err("Failed to get sensor entity\n");
+		aml_cam_log_err("Failed to get sensor entity\n");
 		return -ENODEV;
 	}
 
@@ -352,7 +348,7 @@ static int csiphy_subdev_get_link_freq(struct media_entity *entity, s64 *link_fr
 
 	ctrl = v4l2_ctrl_find(subdev->ctrl_handler, V4L2_CID_LINK_FREQ);
 	if (!ctrl) {
-		pr_err("Failed to get link freq ctrl\n");
+		aml_cam_log_err("Failed to get link freq ctrl\n");
 		return -EINVAL;
 	}
 
@@ -361,7 +357,7 @@ static int csiphy_subdev_get_link_freq(struct media_entity *entity, s64 *link_fr
 
 	rtn = csiphy_subdev_querymenu(subdev->ctrl_handler, &qm);
 	if (rtn) {
-		pr_err("Failed to querymenu idx %d\n", qm.index);
+		aml_cam_log_err("Failed to querymenu idx %d\n", qm.index);
 		return rtn;
 	}
 
@@ -379,7 +375,7 @@ static int csiphy_subdev_get_clock_mode(struct media_entity *entity)
 
 	sensor = csiphy_subdev_get_sensor_entity(entity);
 	if (!sensor) {
-		pr_err("Failed to get sensor entity\n");
+		aml_cam_log_err("Failed to get sensor entity\n");
 		return -ENODEV;
 	}
 
@@ -387,11 +383,11 @@ static int csiphy_subdev_get_clock_mode(struct media_entity *entity)
 
 	ctrl = v4l2_ctrl_find(subdev->ctrl_handler, V4L2_CID_AML_CLOCK_MODE);
 	if (!ctrl) {
-		pr_err("Failed to get clock mode, using fault value\n");
+		aml_cam_log_err("Failed to get clock mode, using fault value\n");
 	} else {
 		clock_mode = ctrl->val;
 	}
-	pr_debug("clock mode: %d \n", clock_mode);
+	aml_cam_log_dbg("clock mode: %d \n", clock_mode);
 	return clock_mode;
 
 }
@@ -404,7 +400,7 @@ static int csiphy_subdev_get_lanes(struct media_entity *entity, int *data_lanes)
 
 	sensor = csiphy_subdev_get_sensor_entity(entity);
 	if (!sensor) {
-		pr_err("Failed to get sensor entity\n");
+		aml_cam_log_err("Failed to get sensor entity\n");
 		return -ENODEV;
 	}
 
@@ -412,7 +408,7 @@ static int csiphy_subdev_get_lanes(struct media_entity *entity, int *data_lanes)
 
 	ctrl = v4l2_ctrl_find(subdev->ctrl_handler, V4L2_CID_AML_CSI_LANES);
 	if (!ctrl) {
-		pr_err("Failed to get csi lanes ctrl\n");
+		aml_cam_log_err("Failed to get csi lanes ctrl\n");
 		return -EINVAL;
 	}
 
@@ -452,7 +448,7 @@ static void csiphy_subdev_log_status(void *priv)
 {
 	struct csiphy_dev_t *csiphy_dev = priv;
 
-	dev_info(csiphy_dev->dev, "Log status done\n");
+	aml_cam_log_info("Log status done\n");
 }
 
 static const struct aml_sub_ops csiphy_subdev_ops = {
@@ -464,7 +460,7 @@ static const struct aml_sub_ops csiphy_subdev_ops = {
 static int csiphy_subdev_power_on(struct csiphy_dev_t *csiphy_dev)
 {
 	int rtn = 0;
-	dev_info(csiphy_dev->dev, "%s in\n", __func__);
+	aml_cam_log_info("%s in\n", __func__);
 
 	dev_pm_domain_attach(csiphy_dev->dev, true);
 	pm_runtime_enable(csiphy_dev->dev);
@@ -474,7 +470,7 @@ static int csiphy_subdev_power_on(struct csiphy_dev_t *csiphy_dev)
 		clk_set_rate(csiphy_dev->csiphy_clk, 200000000);
 		rtn = clk_prepare_enable(csiphy_dev->csiphy_clk);
 		if (rtn)
-			dev_err(csiphy_dev->dev, "Error to enable csiphy_clk\n");
+			aml_cam_log_err("Error to enable csiphy_clk\n");
 	}
 
 	if (!__clk_is_enabled(csiphy_dev->csiphy_clk1)) {
@@ -482,14 +478,14 @@ static int csiphy_subdev_power_on(struct csiphy_dev_t *csiphy_dev)
 		clk_set_rate(csiphy_dev->csiphy_clk1, 200000000);
 		rtn = clk_prepare_enable(csiphy_dev->csiphy_clk1);
 		if (rtn)
-			dev_err(csiphy_dev->dev, "Error to enable csiphy_clk1n");
+			aml_cam_log_err("Error to enable csiphy_clk1n");
 	}
 	return rtn;
 }
 
 static void csiphy_subdev_power_off(struct csiphy_dev_t *csiphy_dev)
 {
-	dev_info(csiphy_dev->dev, "%s in\n", __func__);
+	aml_cam_log_info("%s in\n", __func__);
 
 	clk_disable_unprepare(csiphy_dev->csiphy_clk);
 	clk_disable_unprepare(csiphy_dev->csiphy_clk1);
@@ -501,7 +497,7 @@ static void csiphy_subdev_power_off(struct csiphy_dev_t *csiphy_dev)
 
 void csiphy_subdev_suspend(struct csiphy_dev_t *csiphy_dev)
 {
-	dev_info(csiphy_dev->dev, "%s in\n", __func__);
+	aml_cam_log_info("%s in\n", __func__);
 
 	if (__clk_is_enabled(csiphy_dev->csiphy_clk))
 		clk_disable_unprepare(csiphy_dev->csiphy_clk);
@@ -513,7 +509,7 @@ void csiphy_subdev_suspend(struct csiphy_dev_t *csiphy_dev)
 	pm_runtime_disable(csiphy_dev->dev);
 	dev_pm_domain_detach(csiphy_dev->dev, true);
 
-	dev_info(csiphy_dev->dev, "%s out \n", __func__);
+	aml_cam_log_info("%s out \n", __func__);
 }
 
 int csiphy_subdev_resume(struct csiphy_dev_t *csiphy_dev)
@@ -527,12 +523,12 @@ int csiphy_subdev_resume(struct csiphy_dev_t *csiphy_dev)
 	if (!__clk_is_enabled(csiphy_dev->csiphy_clk)) {
 		rtn = clk_prepare_enable(csiphy_dev->csiphy_clk);
 		if (rtn)
-			dev_err(csiphy_dev->dev, "Error to enable csiphy_clk\n");
+			aml_cam_log_err("Error to enable csiphy_clk\n");
 	}
 	if (!__clk_is_enabled(csiphy_dev->csiphy_clk1)) {
 		rtn = clk_prepare_enable(csiphy_dev->csiphy_clk1);
 		if (rtn)
-			dev_err(csiphy_dev->dev, "Error to enable csiphy_clk1\n");
+			aml_cam_log_err("Error to enable csiphy_clk1\n");
 	}
 	return rtn;
 }
@@ -619,7 +615,7 @@ static int csiphy_proc_init(struct csiphy_dev_t *csiphy_dev)
 	sprintf(file_name, "%s%d", "csiphy", csiphy_dev->index);
 	subdev->proc_node_entry = proc_create_data(file_name, 0644, NULL, &csiphy_proc_file_ops, csiphy_dev);
 	if (subdev->proc_node_entry == NULL) {
-		dev_err(csiphy_dev->dev, "csiphy%u create proc failed!\n", csiphy_dev->index);
+		aml_cam_log_err("csiphy%u create proc failed!\n", csiphy_dev->index);
 		return rtn;
 	}
 
@@ -668,7 +664,7 @@ int aml_csiphy_subdev_register(struct csiphy_dev_t *csiphy_dev)
 	if (rtn)
 		goto error_rtn;
 
-	dev_info(csiphy_dev->dev, "CSIPHY%u: register subdev\n", csiphy_dev->index);
+	aml_cam_log_info("CSIPHY%u: register subdev\n", csiphy_dev->index);
 
 error_rtn:
 	return rtn;
@@ -692,14 +688,14 @@ int aml_csiphy_subdev_init(void *c_dev)
 
 	node = of_parse_phandle(cam_dev->dev->of_node, "csiphy", 0);
 	if (!node) {
-		pr_err("Failed to parse csiphy handle\n");
+		aml_cam_log_err("Failed to parse csiphy handle\n");
 		return rtn;
 	}
 
 	csiphy_dev->pdev = of_find_device_by_node(node);
 	if (!csiphy_dev->pdev) {
 		of_node_put(node);
-		pr_err("Failed to find csiphy platform device");
+		aml_cam_log_err("Failed to find csiphy platform device");
 		return rtn;
 	}
 	of_node_put(node);
@@ -713,29 +709,29 @@ int aml_csiphy_subdev_init(void *c_dev)
 
 	rtn = csiphy_of_parse_ports(csiphy_dev);
 	if (rtn) {
-		dev_err(csiphy_dev->dev, "Failed to parse port\n");
+		aml_cam_log_err("Failed to parse port\n");
 		return -ENODEV;
 	}
 
 	rtn = csiphy_of_parse_version(csiphy_dev);
 	if (rtn) {
-		dev_err(csiphy_dev->dev, "Failed to parse version\n");
+		aml_cam_log_err("Failed to parse version\n");
 		return rtn;
 	}
 
 	rtn = csiphy_of_parse_dev(csiphy_dev);
 	if (rtn) {
-		dev_err(csiphy_dev->dev, "Failed to parse dev\n");
+		aml_cam_log_err("Failed to parse dev\n");
 		return rtn;
 	}
 
 	rtn = csiphy_subdev_power_on(csiphy_dev);
 	if (rtn) {
-		dev_err(csiphy_dev->dev, "Failed to power on\n");
+		aml_cam_log_err("Failed to power on\n");
 		return rtn;
 	}
 
-	dev_info(csiphy_dev->dev, "CSIPHY%u: subdev init\n", csiphy_dev->index);
+	aml_cam_log_info("CSIPHY%u: subdev init\n", csiphy_dev->index);
 
 	g_csiphy_dev[cam_dev->index] = csiphy_dev;
 
@@ -758,5 +754,5 @@ void aml_csiphy_subdev_deinit(void *c_dev)
 
 	devm_clk_put(csiphy_dev->dev, csiphy_dev->csiphy_clk);
 
-	dev_info(csiphy_dev->dev, "CSIPHY%u: subdev deinit\n", csiphy_dev->index);
+	aml_cam_log_info("CSIPHY%u: subdev deinit\n", csiphy_dev->index);
 }

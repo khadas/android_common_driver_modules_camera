@@ -30,6 +30,7 @@
 #include <media/media-entity.h>
 
 #include "aml_common.h"
+#include "aml_debug.h"
 
 #define HDR_LOOPBACK_MODE 0
 

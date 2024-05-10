@@ -16,11 +16,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  */
-#ifdef pr_fmt
-#undef pr_fmt
-#endif
-#define pr_fmt(fmt) "aml-csiphy:%s:%d: " fmt, __func__, __LINE__
-
 #include <linux/io.h>
 #include "../aml_csiphy.h"
 #include "aml_csiphy_hw.h"
@@ -48,7 +43,7 @@ static int mipi_reg_write(void *c_dev, int idx, u32 addr, u32 val)
 			break;
 
 		default:
-			pr_err("Error input idx\n");
+			aml_cam_log_err("Error input idx\n");
 			return rtn;
 	}
 
@@ -78,7 +73,7 @@ static int mipi_reg_read(void *c_dev, int idx, u32 addr, u32 *val)
 			break;
 
 		default:
-			pr_err("Error input idx\n");
+			aml_cam_log_err("Error input idx\n");
 			return rtn;
 	}
 
@@ -202,7 +197,7 @@ static void csiphy_hw_reset(void *c_dev, int idx)
 
 	mipi_reset(c_dev, idx);
 
-	pr_info("CSIPHY%u: hw reset\n", csiphy_dev->index);
+	aml_cam_log_info("CSIPHY%u: hw reset\n", csiphy_dev->index);
 
 	return;
 }
@@ -219,7 +214,7 @@ static int csiphy_hw_start(void *c_dev, int idx, int lanes, s64 link_freq)
 	aphy_cfg(c_dev, idx, lanes, bps);
 	dphy_cfg(c_dev, idx, lanes, bps);
 	host_cfg(c_dev, idx, lanes - 1);
-	pr_info("CSIPHY%u: hw start. bps %d Mbps lanes %d \n", csiphy_dev->index, bps, lanes);
+	aml_cam_log_info("CSIPHY%u: hw start. bps %d Mbps lanes %d \n", csiphy_dev->index, bps, lanes);
 
 	return 0;
 }
@@ -230,7 +225,7 @@ static void csiphy_hw_stop(void *c_dev, int idx)
 
 	mipi_reset(c_dev, idx);
 
-	pr_info("CSIPHY%u: hw stop\n", csiphy_dev->index);
+	aml_cam_log_info("CSIPHY%u: hw stop\n", csiphy_dev->index);
 
 	return;
 }

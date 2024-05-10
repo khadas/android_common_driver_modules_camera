@@ -57,7 +57,7 @@ static int isp_global_reg_buf_alloc(struct isp_dev_t *isp_dev)
 	g_info->rreg_buff.vaddr[AML_PLANE_A] = virtaddr;
 	g_info->rreg_buff.vmaddr[AML_PLANE_A] = vmaddr;
 
-	pr_debug("isp global reg alloc\n");
+	aml_cam_log_dbg("isp global reg alloc\n");
 
 	return 0;
 }
@@ -84,7 +84,7 @@ static int isp_global_reg_buf_free(struct isp_dev_t *isp_dev)
 	g_info->rreg_buff.vaddr[AML_PLANE_A] = NULL;
 	g_info->rreg_buff.vmaddr[AML_PLANE_A] = NULL;
 
-	pr_debug("isp global reg free\n");
+	aml_cam_log_dbg("isp global reg free\n");
 
 	return 0;
 }
@@ -106,7 +106,7 @@ int isp_global_manual_apb_dma(int vdev)
 	if ((g_info->mode == AML_ISP_SCAM) ||
 		(isp_dev->apb_dma == 0) ||
 		(isp_dev->isp_status == STATUS_STOP)) {
-		pr_err("donot set ISP%d\n", vdev);
+		aml_cam_log_err("donot set ISP%d\n", vdev);
 		return -1;
 	}
 
@@ -120,7 +120,7 @@ int isp_global_manual_apb_dma(int vdev)
 	/*for (i = isp_dev->fwreg_cnt; i < isp_dev->twreg_cnt; i ++)
 		isp_hwreg_write(isp_dev, wregs[i].addr - isp_dev->phy_base, wregs[i].val);*/
 
-	pr_debug("global dma %d-%d count:%d-%d\n", isp_dev->index, vdev, isp_dev->twreg_cnt, isp_dev->twreg_cnt - isp_dev->fwreg_cnt);
+	aml_cam_log_dbg("global dma %d-%d count:%d-%d\n", isp_dev->index, vdev, isp_dev->twreg_cnt, isp_dev->twreg_cnt - isp_dev->fwreg_cnt);
 
 	return 0;
 }

@@ -224,7 +224,7 @@ static void rdmif1_cfg_yuv420_size(struct isp_dev_t *isp_dev, struct aml_format 
 	struct rdmif1_param_t param;
 
 	if (fmt->nplanes == 1) {
-		pr_err("Error to support planes\n");
+		aml_cam_log_err("Error to support planes\n");
 		return;
 	}
 
@@ -281,7 +281,7 @@ static void rdmif1_cfg_yuv400_size(struct isp_dev_t *isp_dev, struct aml_format 
 	struct rdmif1_param_t param;
 
 	if (fmt->nplanes != 1) {
-		pr_err("Error to support planes\n");
+		aml_cam_log_err("Error to support planes\n");
 		return;
 	}
 

@@ -16,12 +16,6 @@
 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 *
 */
-
-#ifdef pr_fmt
-#undef pr_fmt
-#endif
-#define pr_fmt(fmt)  "aml-subdev:%s:%d: " fmt, __func__, __LINE__
-
 #include <linux/version.h>
 #include <linux/io.h>
 #include <media/v4l2-common.h>
@@ -36,6 +30,7 @@
 #include <linux/cma.h>
 
 #include "aml_common.h"
+#include "aml_debug.h"
 
 static int subdev_set_stream(struct v4l2_subdev *sd, int enable)
 {
@@ -235,7 +230,7 @@ static int subdev_link_validate(struct media_link *link)
 
 	rtn = v4l2_subdev_link_validate(link);
 	if (rtn)
-		pr_err("Error: src->sink: %s-->%s, rtn %d\n",
+		aml_cam_log_err("Error: src->sink: %s-->%s, rtn %d\n",
 			src->name, sink->name, rtn);
 
 	return rtn;
@@ -266,13 +261,13 @@ int aml_subdev_register(struct aml_subdev *subdev)
 
 	rtn = media_entity_pads_init(&sd->entity, pad_max, pads);
 	if (rtn) {
-		pr_err("Error init entity pads: %d\n", rtn);
+		aml_cam_log_err("Error init entity pads: %d\n", rtn);
 		return rtn;
 	}
 
 	rtn = v4l2_device_register_subdev(v4l2_dev, sd);
 	if (rtn < 0) {
-		pr_err("Error to register subdev: %d\n", rtn);
+		aml_cam_log_err("Error to register subdev: %d\n", rtn);
 		media_entity_cleanup(&sd->entity);
 	}
 
@@ -311,7 +306,7 @@ int aml_subdev_cma_alloc(struct platform_device *pdev, u32 *paddr, void *addr, u
 	if (cma_pages) {
 		*paddr = page_to_phys(cma_pages);
 	} else {
-		pr_debug("Failed alloc cma pages.\n");
+		aml_cam_log_dbg("Failed alloc cma pages.\n");
 		return -1;
 	}
 
@@ -340,7 +335,7 @@ void aml_subdev_cma_free(struct platform_device *pdev, void *paddr, unsigned lon
 	rc = dma_release_from_contiguous(&(pdev->dev), cma_pages, size >> PAGE_SHIFT);
 #endif
 	if (rc == false) {
-		pr_debug("Failed to release cma buffer\n");
+		aml_cam_log_dbg("Failed to release cma buffer\n");
 		return;
 	}
 }
@@ -363,7 +358,7 @@ void * aml_subdev_map_vaddr(u32 phys_addr, u32 length)
 
 	pages = vmalloc(array_size);
 	if (pages == NULL) {
-		pr_info("0x%x vmalloc failed.\n", array_size);
+		aml_cam_log_info("0x%x vmalloc failed.\n", array_size);
 		return NULL;
 	}
 

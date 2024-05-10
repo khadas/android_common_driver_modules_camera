@@ -169,7 +169,7 @@ static int isp_cap_irq_handler(void *video, int status)
 
 	if (1 == vd->dq_check_timer_working) {
 		del_timer(&cam_dev->dq_check_timer);
-		pr_info("stop dq check timer");
+		aml_cam_log_info("stop dq check timer");
 		vd->dq_check_timer_working = 0;
 	}
 
@@ -178,7 +178,7 @@ static int isp_cap_irq_handler(void *video, int status)
 	// otherwise empty frame will be dequeued.
 	if (vd->frm_cnt < video_drop_frame_cnt) {
 		vd->frm_cnt++;
-		//pr_info("drop frame, vid %d, frm cnt %d", vd->id, vd->frm_cnt);
+		//aml_cam_log_info("drop frame, vid %d, frm cnt %d", vd->id, vd->frm_cnt);
 		ops->hw_stream_cfg_buf(vd, b_current);
 		spin_unlock_irqrestore(&vd->buff_list_lock, flags);
 		return 0;
@@ -194,7 +194,7 @@ static int isp_cap_irq_handler(void *video, int status)
 		}
 		t_current = list_first_entry_or_null(&vd->head, struct aml_buffer, list);
 		if ((t_current == NULL) && (vd->id > AML_ISP_STREAM_PARAM)) {
-			pr_err("ISP%d video%d no buf %x %x\n", isp_dev->index, vd->id, b_current->addr[0], b_current->bsize);
+			aml_cam_log_dbg("ISP%d video%d no buf %x %x\n", isp_dev->index, vd->id, b_current->addr[0], b_current->bsize);
 			ops->hw_stream_cfg_buf(vd, b_current);
 			spin_unlock_irqrestore(&vd->buff_list_lock, flags);
 			return 0;
@@ -300,14 +300,14 @@ void isp_drv_convert_format(struct aml_video *vd, struct aml_format *fmt)
 	break;
 	case V4L2_PIX_FMT_RGBX32:
 		if (isp_dev->enWDRMode == 0)
-			pr_err("Error to support RGBX32 without wdr\n");
+			aml_cam_log_err("Error to support RGBX32 without wdr\n");
 		fmt->bpp = 16;
 		fmt->nplanes = 2;
 		fmt->fourcc = AML_FMT_HDR_RAW;
 		fmt->size = fmt->width * fmt->height * 4;
 	break;
 	default:
-		pr_err("Error to support this format, %x\n", vd->f_current.fmt.pix.pixelformat);
+		aml_cam_log_err("Error to support this format, %x\n", vd->f_current.fmt.pix.pixelformat);
 	break;
 	}
 }
@@ -508,13 +508,13 @@ int aml_isp_video_register(struct isp_dev_t *isp_dev)
 			video->min_buffer_count = 2;
 		break;
 		default:
-			dev_err(video->dev, "Error stream type: %d\n", video->id);
+			aml_cam_log_err("Error stream type: %d\n", video->id);
 			return -EINVAL;
 		}
 
 		rtn = aml_video_register(video);
 		if (rtn) {
-			dev_err(video->dev, "Failed to register stream-%d: %d\n", id, rtn);
+			aml_cam_log_err("Failed to register stream-%d: %d\n", id, rtn);
 			break;
 		}
 	}

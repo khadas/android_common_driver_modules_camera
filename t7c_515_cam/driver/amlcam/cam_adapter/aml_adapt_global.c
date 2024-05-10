@@ -16,11 +16,6 @@
 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 *
 */
-#ifdef pr_fmt
-#undef pr_fmt
-#endif
-#define pr_fmt(fmt)  "aml-adap:%s:%d: " fmt, __func__, __LINE__
-
 #include <linux/version.h>
 #include <linux/clk.h>
 #include <linux/io.h>
@@ -57,7 +52,7 @@ static int aml_adap_global_get_done_buf(void)
 	} else {
 		spin_unlock_irqrestore(&g_info->list_lock, flags);
 
-		pr_debug("Error global done list empty\n");
+		aml_cam_log_dbg("Error global done list empty\n");
 
 		return -1;
 	}
@@ -95,7 +90,7 @@ static int aml_adap_global_put_done_buf(void)
 	if (i == fcnt) {
 		spin_unlock_irqrestore(&param->ddr_lock, flags);
 
-		pr_err("Error to find this buff\n");
+		aml_cam_log_err("Error to find this buff\n");
 		return -1;
 	}
 
@@ -187,7 +182,7 @@ static int aml_adap_global_thread(void *data)
 			break;
 
 		if (g_info->task_status == STATUS_STOP) {
-			pr_err("aml_adap_global_thread exit\n");
+			aml_cam_log_err("aml_adap_global_thread exit\n");
 			break;
 		}
 
@@ -199,7 +194,7 @@ static int aml_adap_global_thread(void *data)
 
 		ret = isp_global_manual_apb_dma(g_info->done_buf->devno);
 		if (ret < 0) {
-			pr_err("isp %d close, user %d\n", g_info->done_buf->devno, g_info->user);
+			aml_cam_log_err("isp %d close, user %d\n", g_info->done_buf->devno, g_info->user);
 			msleep(200);
 			continue;
 		}
@@ -212,7 +207,7 @@ static int aml_adap_global_thread(void *data)
 		if (!rtn) {
 			aml_adap_global_put_done_buf();
 
-			pr_err("Timeout to wait done complete\n");
+			aml_cam_log_err("Timeout to wait done complete\n");
 
 			continue;
 		}
@@ -279,7 +274,7 @@ int aml_adap_global_create_thread(void)
 
 	g_info->task = kthread_run(aml_adap_global_thread, g_info, "adap-global");
 	if (g_info->task == NULL) {
-		pr_err("Error to create adap global thread\n");
+		aml_cam_log_err("Error to create adap global thread\n");
 
 		return -1;
 	}
@@ -310,7 +305,7 @@ int aml_adap_global_get_vdev(void)
 		return g_info->devno;
 
 	if (g_info->done_buf == NULL) {
-		pr_err("get vdev error\n");
+		aml_cam_log_err("get vdev error\n");
 		return g_info->devno;
 	}
 

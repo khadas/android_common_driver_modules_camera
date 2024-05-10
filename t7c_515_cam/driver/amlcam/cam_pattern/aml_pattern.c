@@ -16,11 +16,6 @@
 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 *
 */
-#ifdef pr_fmt
-#undef pr_fmt
-#endif
-#define pr_fmt(fmt)  "aml-pattern:%s:%d: " fmt, __func__, __LINE__
-
 #include <linux/io.h>
 
 #include "aml_cam.h"
@@ -54,7 +49,7 @@ static int pattern_subdev_set_format(void *priv, void *s_fmt, void *m_fmt)
 
 static void pattern_subdev_log_status(void *priv)
 {
-	pr_info("Log status done\n");
+	aml_cam_log_info("Log status done\n");
 }
 
 static int pattern_subdev_stream_on(void *priv)
@@ -102,7 +97,7 @@ int aml_pattern_subdev_register(struct pattern_dev_t *pattern)
 	if (rtn)
 		goto error_rtn;
 
-	pr_info("PATTERN%u: register subdev\n", pattern->index);
+	aml_cam_log_info("PATTERN%u: register subdev\n", pattern->index);
 
 error_rtn:
 	return rtn;
@@ -125,7 +120,7 @@ int aml_pattern_subdev_init(void *c_dev)
 	pattern->v4l2_dev = &cam_dev->v4l2_dev;
 	pattern->index = cam_dev->index;
 
-	pr_info("PATTERN%u: subdev init\n", pattern->index);
+	aml_cam_log_info("PATTERN%u: subdev init\n", pattern->index);
 
 	return 0;
 }
@@ -138,5 +133,5 @@ void aml_pattern_subdev_deinit(void *c_dev)
 	cam_dev = c_dev;
 	pattern = &cam_dev->pattern;
 
-	pr_info("PATTERN%u: subdev deinit\n", pattern->index);
+	aml_cam_log_info("PATTERN%u: subdev deinit\n", pattern->index);
 }

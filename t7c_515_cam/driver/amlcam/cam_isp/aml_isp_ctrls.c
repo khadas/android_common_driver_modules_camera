@@ -39,7 +39,7 @@ static int v4l2_s_std_ctrl(struct v4l2_ctrl *ctrl)
 			a_ctrl->fps_output = ctrl->val;
 		break;
 		default:
-			dev_err(vd->dev, "Error ctrl->id %u, flag 0x%lx\n",
+			aml_cam_log_err("Error ctrl->id %u, flag 0x%lx\n",
 				ctrl->id, ctrl->flags);
 			ret = -EINVAL;
 		break;
@@ -103,12 +103,12 @@ int isp_v4l2_ctrl_init(struct aml_video *video)
 	video->vdev.ctrl_handler = hdl_std_ctrl;
 	rtn = v4l2_ctrl_handler_setup(video->vdev.ctrl_handler);
 	if (rtn) {
-		dev_err(video->dev, "Could not sync v4l2 controls\n");
+		aml_cam_log_err("Could not sync v4l2 controls\n");
 		return rtn;
 	}
 
 	if (hdl_std_ctrl->error) {
-		dev_err(video->dev, "Control initialization error %d\n",
+		aml_cam_log_err("Control initialization error %d\n",
 			hdl_std_ctrl->error);
 		rtn = hdl_std_ctrl->error;
 	}

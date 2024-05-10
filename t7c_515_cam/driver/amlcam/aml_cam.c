@@ -30,9 +30,84 @@
 
 #include "aml_cam.h"
 
-#ifdef DEBUG_TEST_MIPI_RESET
-extern int debug_test_mipi_reset;
-#endif
+#define AML_CAM_CLASS_NAME "camera"
+unsigned int aml_cam_log_level;
+int debug_test_mipi_reset;
+
+static int init_aml_cam_debugfs(void);
+
+static int remove_aml_cam_debugfs(void);
+
+static ssize_t log_level_show(struct class *cla,
+			      struct class_attribute *attr,
+			      char *buf);
+static ssize_t log_level_store(struct class *cla,
+			       struct class_attribute *attr,
+			       const char *buf, size_t count);
+static ssize_t mipi_reset_debug_show(struct class *cla,
+			      struct class_attribute *attr,
+			      char *buf);
+static ssize_t mipi_reset_debug_store(struct class *cla,
+			       struct class_attribute *attr,
+			       const char *buf, size_t count);
+
+static CLASS_ATTR_RW(log_level);
+static CLASS_ATTR_RW(mipi_reset_debug);
+
+static struct attribute *aml_cam_class_attrs[] = {
+	&class_attr_log_level.attr,
+	&class_attr_mipi_reset_debug.attr,
+	NULL
+};
+ATTRIBUTE_GROUPS(aml_cam_class);
+
+static struct class aml_cam_class = {
+	.name = AML_CAM_CLASS_NAME,
+	.class_groups = aml_cam_class_groups,
+};
+
+static ssize_t log_level_show(struct class *cla,
+			      struct class_attribute *attr,
+			      char *buf)
+{
+	return snprintf(buf, 40, "%d\n", aml_cam_log_level);
+}
+
+static ssize_t log_level_store(struct class *cla,
+			       struct class_attribute *attr,
+			       const char *buf, size_t count)
+{
+	int res = 0;
+	int ret = 0;
+
+	ret = kstrtoint(buf, 0, &res);
+	aml_cam_log_info("aml_cam log_level: %d->%d\n", aml_cam_log_level, res);
+	aml_cam_log_level = res;
+
+	return count;
+}
+
+static ssize_t mipi_reset_debug_show(struct class *cla,
+			      struct class_attribute *attr,
+			      char *buf)
+{
+	return snprintf(buf, 40, "%d\n", debug_test_mipi_reset);
+}
+
+static ssize_t mipi_reset_debug_store(struct class *cla,
+			       struct class_attribute *attr,
+			       const char *buf, size_t count)
+{
+	int res = 0;
+	int ret = 0;
+
+	ret = kstrtoint(buf, 0, &res);
+	aml_cam_log_info("aml_cam debug_test_mipi_reset: %d->%d\n", debug_test_mipi_reset, res);
+	debug_test_mipi_reset = res;
+
+	return count;
+}
+
 
 static void cam_debug_dq_check_timeout(struct timer_list *t);
 
@@ -61,7 +136,7 @@ static int cam_subdevs_register(struct cam_device *cam_dev)
 	break;
 	default:
 		rtn = -EINVAL;
-		dev_err(cam_dev->dev, "Error camera index: %u\n", cam_dev->index);
+		aml_cam_log_err("Error camera index: %u\n", cam_dev->index);
 	break;
 	}
 
@@ -84,7 +159,7 @@ static int cam_videos_register(struct cam_device *cam_dev)
 	break;
 	default:
 		rtn = -EINVAL;
-		dev_err(cam_dev->dev, "Error camera index: %u\n", cam_dev->index);
+		aml_cam_log_err("Error camera index: %u\n", cam_dev->index);
 	break;
 	}
 
@@ -107,7 +182,7 @@ static void cam_subdevs_unregister(struct cam_device *cam_dev)
 	case AML_CAM_4:
 	break;
 	default:
-		dev_err(cam_dev->dev, "Error camera index: %u\n", cam_dev->index);
+		aml_cam_log_err("Error camera index: %u\n", cam_dev->index);
 	break;
 	}
 }
@@ -125,7 +200,7 @@ static void cam_videos_unregister(struct cam_device *cam_dev)
 		aml_adap_video_unregister(&cam_dev->adap_dev);
 	break;
 	default:
-		dev_err(cam_dev->dev, "Error camera index: %u\n", cam_dev->index);
+		aml_cam_log_err("Error camera index: %u\n", cam_dev->index);
 	break;
 	}
 }
@@ -141,7 +216,7 @@ static int cam_create_csiphy_adap_links(struct cam_device *cam_dev)
 	rtn = media_create_pad_link(csiphy, AML_CSIPHY_PAD_SRC,
 				adap, AML_ADAP_PAD_SINK, flags);
 	if (rtn) {
-		dev_err(cam_dev->dev, "Failed to link %s->%s entity\n",
+		aml_cam_log_err("Failed to link %s->%s entity\n",
 			csiphy->name, adap->name);
 		return rtn;
 	}
@@ -160,7 +235,7 @@ static int cam_create_adap_isp_links(struct cam_device *cam_dev)
 	rtn = media_create_pad_link(adap, AML_ADAP_PAD_SRC,
 				isp, AML_ISP_PAD_SINK_VIDEO, flags);
 	if (rtn) {
-		dev_err(cam_dev->dev, "Failed to link %s->%s entity\n",
+		aml_cam_log_err("Failed to link %s->%s entity\n",
 			adap->name, isp->name);
 		return rtn;
 	}
@@ -179,7 +254,7 @@ static int cam_create_pattern_isp_links(struct cam_device *cam_dev)
 	rtn = media_create_pad_link(pattern, AML_PATTERN_PAD_SRC,
 				isp, AML_ISP_PAD_SINK_PATTERN, flags);
 	if (rtn) {
-		dev_err(cam_dev->dev, "Failed to link %s->%s entity\n",
+		aml_cam_log_err("Failed to link %s->%s entity\n",
 			pattern->name, isp->name);
 		return rtn;
 	}
@@ -203,7 +278,7 @@ static int cam_create_isp_video_links(struct cam_device *cam_dev)
 			rtn = media_create_pad_link(isp, i, video, 0, flags);
 
 		if (rtn) {
-			dev_err(cam_dev->dev, "Failed to link %s->%s entity\n",
+			aml_cam_log_err("Failed to link %s->%s entity\n",
 				video->name, isp->name);
 			break;
 		}
@@ -224,7 +299,7 @@ static int cam_create_adap_video_links(struct cam_device *cam_dev)
 
 	rtn = media_create_pad_link(adap, AML_ADAP_PAD_SRC, video, 0, flags);
 	if (rtn) {
-		dev_err(cam_dev->dev, "Failed to link %s->%s entity\n",
+		aml_cam_log_err("Failed to link %s->%s entity\n",
 				video->name, adap->name);
 		return rtn;
 	}
@@ -265,7 +340,7 @@ static int cam_create_links(struct cam_device *cam_dev)
 	break;
 	default:
 		rtn = -EINVAL;
-		dev_err(cam_dev->dev, "Error camera index: %u\n", cam_dev->index);
+		aml_cam_log_err("Error camera index: %u\n", cam_dev->index);
 	break;
 	}
 
@@ -278,25 +353,25 @@ static int cam_devnode_register(struct cam_device *cam_dev)
 
 	rtn = cam_videos_register(cam_dev);
 	if (rtn < 0) {
-		dev_err(cam_dev->dev, "Failed to register video node: %d\n", rtn);
+		aml_cam_log_err("Failed to register video node: %d\n", rtn);
 		goto error_return;
 	}
 
 	rtn = cam_create_links(cam_dev);
 	if (rtn) {
-		dev_err(cam_dev->dev, "Failed to create links: %d\n", rtn);
+		aml_cam_log_err("Failed to create links: %d\n", rtn);
 		goto error_video;
 	}
 
 	rtn = v4l2_device_register_subdev_nodes(&cam_dev->v4l2_dev);
 	if (rtn < 0) {
-		dev_err(cam_dev->dev, "Failed to register sd node: %d\n", rtn);
+		aml_cam_log_err("Failed to register sd node: %d\n", rtn);
 		goto error_video;
 	}
 
 	rtn = media_device_register(&cam_dev->media_dev);
 	if (rtn) {
-		dev_err(cam_dev->dev, "Failed to register media: %d\n", rtn);
+		aml_cam_log_err("Failed to register media: %d\n", rtn);
 		goto error_video;
 	}
 
@@ -358,29 +433,28 @@ static int cam_async_notifier_complete(struct v4l2_async_notifier *async)
 		}
 		if (i == sensor->num_pads) {
 			rtn = -EINVAL;
-			dev_err(cam_dev->dev, "No source pad in sensor\n");
+			aml_cam_log_err("No source pad in sensor\n");
 			goto error_return;
 		}
 
 		rtn = media_create_pad_link(sensor, i, csiphy,
 				AML_CSIPHY_PAD_SINK, MEDIA_LNK_FL_ENABLED);
 		if (rtn < 0) {
-			dev_err(cam_dev->dev,
-					"Failed to link %s->%s entities: %d\n",
+			aml_cam_log_err("Failed to link %s->%s entities: %d\n",
 					sensor->name, csiphy->name, rtn);
 				goto error_return;
 		}
 	}
 	rtn = cam_devnode_register(cam_dev);
 	if (rtn) {
-		dev_info(cam_dev->dev, "cam_devnode_register fail. ret %d\n", rtn);
+		aml_cam_log_info("cam_devnode_register fail. ret %d\n", rtn);
 	}
 
-	dev_info(cam_dev->dev, "Success async notifier complete\n");
+	aml_cam_log_info("Success async notifier complete\n");
 
 	timer_setup(&(cam_dev->dq_check_timer ), cam_debug_dq_check_timeout, 0);
 
-	dev_info(cam_dev->dev, "dq check timer setup\n");
+	aml_cam_log_info("dq check timer setup\n");
 
 error_return:
 
@@ -401,7 +475,7 @@ static int cam_async_notifier_register(struct cam_device *cam_dev)
 	struct v4l2_async_notifier *notifier = &cam_dev->notifier;
 
 	if (list_empty(&notifier->asd_list)) {
-		dev_err(cam_dev->dev, "Error input param\n");
+		aml_cam_log_err("Error input param\n");
 		return -EINVAL;
 	}
 
@@ -409,7 +483,7 @@ static int cam_async_notifier_register(struct cam_device *cam_dev)
 
 	rtn = v4l2_async_notifier_register(v4l2_dev, notifier);
 	if (rtn)
-		dev_err(cam_dev->dev, "Failed to notifier register: %d\n", rtn);
+		aml_cam_log_err("Failed to notifier register: %d\n", rtn);
 
 	return rtn;
 }
@@ -420,13 +494,13 @@ static int cam_init_subdevices(struct cam_device *cam_dev)
 
 	rtn = aml_csiphy_subdev_init(cam_dev);
 	if (rtn) {
-		dev_err(cam_dev->dev, "Failed to init csiphy subdev: %d\n", rtn);
+		aml_cam_log_err("Failed to init csiphy subdev: %d\n", rtn);
 		return rtn;
 	}
 
 	rtn = aml_adap_subdev_init(cam_dev);
 	if (rtn) {
-		dev_err(cam_dev->dev, "Failed to init adap subdev: %d\n", rtn);
+		aml_cam_log_err("Failed to init adap subdev: %d\n", rtn);
 		return rtn;
 	}
 
@@ -437,7 +511,7 @@ static int cam_init_subdevices(struct cam_device *cam_dev)
 	case AML_CAM_3:
 		rtn = aml_isp_subdev_init(cam_dev);
 		if (rtn) {
-			dev_err(cam_dev->dev, "Failed to init isp subdev: %d\n", rtn);
+			aml_cam_log_err("Failed to init isp subdev: %d\n", rtn);
 			return rtn;
 		}
 
@@ -448,7 +522,7 @@ static int cam_init_subdevices(struct cam_device *cam_dev)
 	break;
 	default:
 		rtn = -EINVAL;
-		dev_err(cam_dev->dev, "Error camera index: %u\n", cam_dev->index);
+		aml_cam_log_err("Error camera index: %u\n", cam_dev->index);
 	break;
 	}
 
@@ -468,7 +542,7 @@ static void cam_deinit_subdevices(struct cam_device *cam_dev)
 		case AML_CAM_4:
 		break;
 		default:
-			dev_err(cam_dev->dev, "Error camera index: %u\n", cam_dev->index);
+			aml_cam_log_err("Error camera index: %u\n", cam_dev->index);
 		break;
 	}
 
@@ -479,7 +553,7 @@ static void cam_deinit_subdevices(struct cam_device *cam_dev)
 static int cam_link_notify(struct media_link *link, u32 flags,
 			   unsigned int notification)
 {
-	pr_debug("amlcam: %s --> %s, flag %u\n",
+	aml_cam_log_dbg("amlcam: %s --> %s, flag %u\n",
 		link->source->entity->name,
 		link->sink->entity->name,
 		flags);
@@ -515,7 +589,7 @@ void cam_debug_mipi_dump(struct cam_device *cam_dev)
 	extern  uint32_t debug_isp_irq_in_count;
 	extern  uint32_t debug_isp_irq_out_count;
 
-	pr_err("isp irq in %d,  out %d", debug_isp_irq_in_count, debug_isp_irq_out_count);
+	aml_cam_log_err("isp irq in %d,  out %d", debug_isp_irq_in_count, debug_isp_irq_out_count);
 
 }
 
@@ -524,7 +598,7 @@ int cam_debug_mipi_off(struct cam_device *cam_dev)
 	// adapter off
 	if (cam_dev->adap_dev.ops->hw_stop) {
 		cam_dev->adap_dev.ops->hw_stop(&(cam_dev->adap_dev));
-		pr_err("adap hw_stop");
+		aml_cam_log_err("adap hw_stop");
 	}
 	// csiphy off
 	cam_dev->csiphy_dev.ops->hw_stop(&(cam_dev->csiphy_dev), cam_dev->csiphy_dev.index );
@@ -543,14 +617,10 @@ int cam_debug_mipi_on(struct cam_device *cam_dev)
 	// adapter on
 	if (cam_dev->adap_dev.ops->hw_start) {
 		cam_dev->adap_dev.ops->hw_start(&(cam_dev->adap_dev));
-		pr_err("adap hw_start");
+		aml_cam_log_err("adap hw_start");
 	}
 	// csiphy on
 	cam_dev->csiphy_dev.ops->hw_start(&(cam_dev->csiphy_dev), cam_dev->csiphy_dev.index, cam_dev->csiphy_dev.lanecnt, cam_dev->csiphy_dev.lanebps);
-
-#ifdef DEBUG_TEST_MIPI_RESET
-	debug_test_mipi_reset = 0;
-#endif
 
 	return 0;
 }
@@ -559,14 +629,14 @@ static void cam_debug_dq_check_timeout(struct timer_list *t)
 {
 	struct cam_device *cam_dev = container_of(t, struct cam_device, dq_check_timer);
 
-	pr_err("in, dump & reset mipi");
+	aml_cam_log_err("in, dump & reset mipi");
 
 	cam_debug_mipi_dump( cam_dev);
 
 	cam_debug_mipi_off(cam_dev);
 	cam_debug_mipi_on(cam_dev);
 
-	pr_err("leave");
+	aml_cam_log_err("leave");
 }
 
 static int cam_v4l2_dev_register(struct cam_device *cam_dev)
@@ -587,12 +657,14 @@ static int cam_probe(struct platform_device *pdev)
 	struct cam_device *cam_dev;
 	struct device *dev = &pdev->dev;
 
+	init_aml_cam_debugfs();
+
 	cam_dev = devm_kzalloc(dev, sizeof(*cam_dev), GFP_KERNEL);
 	if (!cam_dev)
 		return -ENOMEM;
 
 	if (of_property_read_u32(dev->of_node, "index", &cam_dev->index)) {
-		dev_err(dev, "Failed to read camera index\n");
+		aml_cam_log_err("Failed to read camera index\n");
 		return -EINVAL;
 	}
 
@@ -607,20 +679,19 @@ static int cam_probe(struct platform_device *pdev)
 
 	rtn = cam_v4l2_dev_register(cam_dev);
 	if (rtn) {
-		dev_err(dev, "Failed to v4l2 register: %d\n", rtn);
+		aml_cam_log_err("Failed to v4l2 register: %d\n", rtn);
 		goto error_init_subdevs;
 	}
 
 	rtn = cam_subdevs_register(cam_dev);
 	if (rtn) {
-		dev_err(dev, "Failed to register entity\n");
+		aml_cam_log_err("Failed to register entity\n");
 		goto error_v4l2_dev;
 	}
 
 	rtn = cam_async_notifier_register(cam_dev);
 	if (rtn) {
-		dev_err(cam_dev->dev,
-			"Failed to register subdev notifier(%d)\n", rtn);
+		aml_cam_log_err("Failed to register subdev notifier(%d)\n", rtn);
 		goto error_subdevs_register;
 	}
 
@@ -653,7 +724,9 @@ static int cam_remove(struct platform_device *pdev)
 
 	cam_deinit_subdevices(cam_dev);
 
-	dev_info(cam_dev->dev, "cam-%u remove finished\n", cam_dev->index);
+	remove_aml_cam_debugfs();
+
+	aml_cam_log_info("cam-%u remove finished\n", cam_dev->index);
 
 	return 0;
 }
@@ -677,11 +750,11 @@ static int cam_power_suspend(struct device *dev)
 			csiphy_subdev_suspend(&cam_dev->csiphy_dev);
 		break;
 		default:
-			dev_err(cam_dev->dev, "Error camera index: %u\n", cam_dev->index);
+			aml_cam_log_err("Error camera index: %u\n", cam_dev->index);
 		break;
 	}
 
-	dev_info(dev, "suspend\n");
+	aml_cam_log_info("suspend\n");
 
 	return 0;
 }
@@ -705,11 +778,11 @@ static int cam_power_resume(struct device *dev)
 			csiphy_subdev_resume(&cam_dev->csiphy_dev);
 		break;
 		default:
-			dev_err(cam_dev->dev, "Error camera index: %u\n", cam_dev->index);
+			aml_cam_log_err("Error camera index: %u\n", cam_dev->index);
 		break;
 	}
 
-	dev_info(dev, "resume\n");
+	aml_cam_log_info("resume\n");
 
 	return 0;
 }
@@ -749,6 +822,25 @@ static struct platform_driver cam_driver = {
 	},
 };
 
+static int init_aml_cam_debugfs(void)
+{
+	int  ret = 0;
+
+	ret = class_register(&aml_cam_class);
+	if (ret < 0) {
+		aml_cam_log_err("error create aml_cam_dev class\n");
+		return ret;
+	}
+	return ret;
+}
+
+static int remove_aml_cam_debugfs(void)
+{
+	class_unregister(&aml_cam_class);
+	class_destroy(&aml_cam_class);
+	return  0;
+}
+
 #if  IS_ENABLED(CONFIG_AMLOGIC_FREERTOS)
 
 static int  cam_driver_registered = 0; // 0 not registered. 1 registered.
@@ -762,10 +854,10 @@ static int rtos_driver_event(struct notifier_block *this, unsigned long event, v
 {
 	int32_t err = 0;
 	if (cam_driver_registered == 0) {
-		pr_info("event = %d, amlcam isp platform add drv\n", event);
+		aml_cam_log_info("event = %d, amlcam isp platform add drv\n", event);
 		err = platform_driver_register(&(cam_driver));
 		if (err)
-			pr_err("platform driver register fail. ret %d", err);
+			aml_cam_log_err("platform driver register fail. ret %d", err);
 		else
 			cam_driver_registered = 1;
 	}
@@ -780,14 +872,14 @@ static struct notifier_block camera_notifier =
 static int __init amlcam_drv_init(void)
 {
 	int err;
-	pr_info("amlcam isp driver init\n");
+	aml_cam_log_info("amlcam isp driver init\n");
 
 	if (cam_after_rtos == 0) {
 		// not after rtos, just add driver now.
-		pr_info("amlcam isp platform add drv\n");
+		aml_cam_log_info("amlcam isp platform add drv\n");
 		err = platform_driver_register(&(cam_driver) );
 		if (err) {
-			pr_err("platform driver register fail. ret %d", err);
+			aml_cam_log_err("platform driver register fail. ret %d", err);
 			return err;
 		}
 		cam_driver_registered = 1;
@@ -795,10 +887,10 @@ static int __init amlcam_drv_init(void)
 
 	err = register_freertos_notifier(&camera_notifier);
 	if (err) {
-		pr_err("amlcam register_freertos_notifier error\n");
+		aml_cam_log_err("amlcam register_freertos_notifier error\n");
 		return -1;
 	}
-	pr_info("amlcam isp register_freertos_notifier completed\n");
+	aml_cam_log_info("amlcam isp register_freertos_notifier completed\n");
 
 	return err;
 }

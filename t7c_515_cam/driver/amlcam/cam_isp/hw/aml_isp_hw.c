@@ -119,7 +119,7 @@ int isp_reg_update_bits(struct isp_dev_t *isp_dev, u32 addr, u32 val, u32 start,
 
 	if (start + len > 32) {
 		dump_stack();
-		pr_err("ISP: Error input start and len\n");
+		aml_cam_log_err("ISP: Error input start and len\n");
 		return rtn;
 	} else if (start == 0 && len == 32) {
 		isp_reg_write(isp_dev, addr, val);
@@ -148,7 +148,7 @@ int isp_hwreg_update_bits(struct isp_dev_t *isp_dev, u32 addr, u32 val, u32 star
 
 	if (start + len > 32) {
 		dump_stack();
-		pr_err("ISP: Error input start and len\n");
+		aml_cam_log_err("ISP: Error input start and len\n");
 		return rtn;
 	} else if (start == 0 && len == 32) {
 		isp_hwreg_write(isp_dev, addr, val);
@@ -176,7 +176,7 @@ int isp_hwreg_read_bits(struct isp_dev_t *isp_dev, u32 addr, u32 *val, u32 start
 
 	if (start + len > 32 || !val) {
 		dump_stack();
-		pr_err("ISP: Error input start and len\n");
+		aml_cam_log_err("ISP: Error input start and len\n");
 		return rtn;
 	} else if (start == 0 && len == 32) {
 		*val = isp_hwreg_read(isp_dev, addr);
@@ -199,7 +199,7 @@ int isp_reg_read_bits(struct isp_dev_t *isp_dev, u32 addr, u32 *val, u32 start, 
 
 	if (start + len > 32 || !val) {
 		dump_stack();
-		pr_err("ISP: Error input start and len\n");
+		aml_cam_log_err("ISP: Error input start and len\n");
 		return rtn;
 	} else if (start == 0 && len == 32) {
 		*val = isp_reg_read(isp_dev, addr);
@@ -265,7 +265,7 @@ int isp_hw_convert_fmt(struct aml_format *fmt)
 		isp_fmt = ISP_FMT_GBRG;
 		break;
 	default:
-		pr_err("ISP: Error input code\n");
+		aml_cam_log_err("ISP: Error input code\n");
 		isp_fmt = ISP_FMT_RGGB;
 	}
 
@@ -304,7 +304,7 @@ static void isp_hw_init(struct isp_dev_t *isp_dev)
 
 	isp_apb_dma_init(isp_dev);
 
-	pr_info("ISP%u: hw init\n", isp_dev->index);
+	aml_cam_log_info("ISP%u: hw init\n", isp_dev->index);
 }
 
 static void isp_hw_reset(struct isp_dev_t *isp_dev)
@@ -312,7 +312,7 @@ static void isp_hw_reset(struct isp_dev_t *isp_dev)
 	isp_top_reset(isp_dev);
 	isp_top_decmpr_disable(isp_dev);
 
-	pr_info("ISP%u: hw reset\n", isp_dev->index);
+	aml_cam_log_info("ISP%u: hw reset\n", isp_dev->index);
 
 	return;
 }
@@ -330,7 +330,7 @@ static u32 isp_hw_interrupt_status(struct isp_dev_t *isp_dev)
 
 	status = isp_top_irq_stat(isp_dev);
 
-	pr_debug("ISP%u: irq status 0x%x\n", isp_dev->index, status);
+	aml_cam_log_dbg("ISP%u: irq status 0x%x\n", isp_dev->index, status);
 
 	return status;
 }
@@ -391,7 +391,7 @@ static int isp_hw_set_input_fmt(struct isp_dev_t *isp_dev, struct aml_format *fm
 
 	isp_hw_set_fmt(isp_dev, fmt);
 
-	pr_info("ISP%u: set input fmt\n", isp_dev->index);
+	aml_cam_log_info("ISP%u: set input fmt\n", isp_dev->index);
 
 	return 0;
 }
@@ -464,7 +464,7 @@ static int isp_hw_set_slice_fmt(struct isp_dev_t *isp_dev, struct aml_format *fm
 
 	isp_disp_set_overlap(isp_dev, ovlp);
 
-	pr_info("ISP%u: set slice input fmt: %u-%u\n", isp_dev->index, fmt->width, fmt->height);
+	aml_cam_log_info("ISP%u: set slice input fmt: %u-%u\n", isp_dev->index, fmt->width, fmt->height);
 
 	return 0;
 }
@@ -487,7 +487,7 @@ static void isp_hw_calc_slice(struct isp_dev_t *isp_dev, u32 idx)
 
 	isp_disp_calc_slice(isp_dev, idx, &isp_dev->aslice[idx]);
 
-	pr_info("ISP%u: calc slice param\n", isp_dev->index);
+	aml_cam_log_info("ISP%u: calc slice param\n", isp_dev->index);
 }
 
 static int isp_hw_cfg_slice(struct isp_dev_t *isp_dev, int pos)
@@ -555,7 +555,7 @@ static int isp_hw_cfg_pattern(struct isp_dev_t *isp_dev, struct aml_format *fmt)
 		timgen.width = 8800;
 		timgen.height = 5120;
 		break;
-		pr_err("ISP%u: Error isp index\n", isp_dev->index);
+		aml_cam_log_err("ISP%u: Error isp index\n", isp_dev->index);
 		return rtn;
 	}
 
@@ -585,7 +585,7 @@ static int isp_hw_cfg_timgen(struct isp_dev_t *isp_dev)
 		timgen.width = 1328 + 1665;
 		timgen.height = 1120 + 1120;
 		break;
-		pr_err("ISP%u: Error isp index\n", isp_dev->index);
+		aml_cam_log_err("ISP%u: Error isp index\n", isp_dev->index);
 		return rtn;
 	}
 
@@ -733,7 +733,7 @@ static void isp_hw_stream_on(struct aml_video *video)
 		break;
 	}
 
-	pr_info("ISP%u: hw stream %d on\n", isp_dev->index, video->id);
+	aml_cam_log_info("ISP%u: hw stream %d on\n", isp_dev->index, video->id);
 }
 
 static void isp_hw_stream_off(struct aml_video *video)
@@ -762,14 +762,14 @@ static void isp_hw_stream_off(struct aml_video *video)
 		break;
 	}
 
-	pr_info("ISP%u: hw stream %d off\n", isp_dev->index, video->id);
+	aml_cam_log_info("ISP%u: hw stream %d off\n", isp_dev->index, video->id);
 }
 
 static void isp_hw_start(struct isp_dev_t *isp_dev)
 {
 	isp_top_enable(isp_dev);
 
-	pr_info("ISP%u: hw start\n", isp_dev->index);
+	aml_cam_log_info("ISP%u: hw start\n", isp_dev->index);
 }
 
 static void isp_hw_stop(struct isp_dev_t *isp_dev)
@@ -778,7 +778,7 @@ static void isp_hw_stop(struct isp_dev_t *isp_dev)
 	isp_patgen_disable(isp_dev);
 	isp_timgen_disable(isp_dev);
 
-	pr_info("ISP%u: hw stop\n", isp_dev->index);
+	aml_cam_log_info("ISP%u: hw stop\n", isp_dev->index);
 }
 
 static int isp_hw_enable_wrmifx3(struct aml_video *video, int enable, int force)
@@ -852,7 +852,7 @@ static int isp_hw_enable_rot(struct aml_video *video, int enable)
 			isp_wrmifx3_flip_enable(video->priv, video->id - 3, enable);
 			break;
 		default:
-			pr_err("Failed to support rot type %d\n", video->rot_type);
+			aml_cam_log_err("Failed to support rot type %d\n", video->rot_type);
 			return -1;
 	}
 
