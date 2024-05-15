@@ -657,8 +657,6 @@ static int cam_probe(struct platform_device *pdev)
 	struct cam_device *cam_dev;
 	struct device *dev = &pdev->dev;
 
-	init_aml_cam_debugfs();
-
 	cam_dev = devm_kzalloc(dev, sizeof(*cam_dev), GFP_KERNEL);
 	if (!cam_dev)
 		return -ENOMEM;
@@ -723,8 +721,6 @@ static int cam_remove(struct platform_device *pdev)
 	v4l2_device_unregister(&cam_dev->v4l2_dev);
 
 	cam_deinit_subdevices(cam_dev);
-
-	remove_aml_cam_debugfs();
 
 	aml_cam_log_info("cam-%u remove finished\n", cam_dev->index);
 
@@ -908,7 +904,27 @@ module_exit(amlcam_drv_exit);
 
 #else
 
-module_platform_driver(cam_driver);
+static int __init amlcam_drv_init(void)
+{
+	int err;
+	aml_cam_log_info("amlcam isp platform add drv\n");
+	init_aml_cam_debugfs();
+	err = platform_driver_register(&(cam_driver) );
+	if (err) {
+		aml_cam_log_err("platform driver register fail. ret %d", err);
+		return err;
+	}
+	return err;
+}
+
+static void __exit amlcam_drv_exit(void)
+{
+	remove_aml_cam_debugfs();
+	platform_driver_unregister(&(cam_driver) );
+}
+
+module_init(amlcam_drv_init);
+module_exit(amlcam_drv_exit);
 
 #endif
 
